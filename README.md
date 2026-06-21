@@ -108,47 +108,17 @@ No tmux reload is needed once the terminal picks up the new font.
 
 ## Install
 
-### Clone, then apply (recommended — works the same everywhere)
-
-This repo vendors [Oh My TMUX](https://github.com/gpakosz/.tmux) as a git
-submodule, and the base config is installed as a symlink pointing into it.
-**You must fetch the submodule during clone**, or the symlink will be broken
-(`submodules/oh-my-tmux/` is empty after a plain `git clone`).
-
 ```sh
-# 1. Clone WITH submodules (the --recursive is essential)
-git clone --recursive <your-git-remote-url> ~/projects/dotfiles
-cd ~/projects/dotfiles
-
-# 2. Point chezmoi at this clone as its source
-chezmoi init --source="$PWD"
-
-# 3. Apply
-chezmoi apply -v
+chezmoi init --apply --verbose <your-git-remote-url>
 ```
+
+This single command:
+- Clones your repo to `~/.local/share/chezmoi` (chezmoi's source directory)
+- Fetches git submodules (including Oh My TMUX)
+- Applies all dotfiles to your home directory
 
 `chezmoi apply` runs the one-shot TPM bootstrap, which clones TPM and installs
 all plugins into the XDG plugin directory.
-
-> ⚠️ `chezmoi init --source=<path>` does **not** fetch submodules for you —
-> only the recursive clone (or a manual `git submodule update --init --recursive`)
-> populates `submodules/oh-my-tmux/`. If you forget, `chezmoi apply` will
-> create a dangling symlink; re-run the submodule init and `chezmoi apply` to fix.
-
-#### Already cloned without `--recursive`?
-
-```sh
-git -C ~/projects/dotfiles submodule update --init --recursive
-```
-
-### All-in-one via chezmoi (alternative)
-
-`chezmoi init --apply <url>` clones into chezmoi's default source dir and runs
-the submodule init in one step. Use this if you don't care where the clone lives:
-
-```sh
-chezmoi init --apply <your-git-remote-url>
-```
 
 ### Inspecting the repo without chezmoi
 
