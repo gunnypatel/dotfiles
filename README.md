@@ -1,9 +1,10 @@
 # dotfiles
 
-Portable, [chezmoi](https://www.chezmoi.io)-managed dotfiles. This first pass
-manages **tmux** only — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
-[TPM](https://github.com/tmux-plugins/tpm), and a [catppuccin](https://github.com/catppuccin/tmux)
-(mocha) theme, laid out cleanly under XDG (no files in `$HOME`).
+Portable, [chezmoi](https://www.chezmoi.io)-managed dotfiles. Currently manages
+**tmux** and **fish shell** — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
+[TPM](https://github.com/tmux-plugins/tpm), [catppuccin](https://github.com/catppuccin/tmux)
+(mocha) theme, and [Fisher](https://github.com/jorgebucaran/fisher) plugins,
+laid out cleanly under XDG (no files in `$HOME`).
 
 ## What gets installed
 
@@ -14,9 +15,37 @@ manages **tmux** only — built on [Oh My TMUX](https://github.com/gpakosz/.tmux
 | `~/.config/tmux/plugins/` | TPM + all plugins (XDG location, auto-detected by TPM) |
 | `~/.config/tmux-sessionizer/tmux-sessionizer.conf` | search paths for the session picker |
 | `~/.local/bin/tmux-sessionizer` | fuzzy project switcher (vendored script) |
+| `~/.config/fish/config.fish` | fish shell configuration |
+| `~/.config/fish/fish_plugins` | Fisher plugin list |
+| `~/.config/fish/conf.d/*.fish` | fish configuration snippets |
+| `~/.config/fish/functions/*.fish` | custom fish functions |
 
-The plugin install location is centralized in `tmux.conf.local` as `@plugin_dir`
+The tmux plugin install location is centralized in `tmux.conf.local` as `@plugin_dir`
 and referenced via `#{@plugin_dir}` — change it in one place to move plugins.
+
+### Fish Shell
+
+The fish configuration includes:
+
+- **config.fish** - Main configuration with aliases, path setup, and fzf key bindings
+- **fish_plugins** - Plugin list for [Fisher](https://github.com/jorgebucaran/fisher)
+  - [nvm.fish](https://github.com/jorgebucaran/nvm.fish) - Node version manager
+  - [tide](https://github.com/ilancosman/tide) - Modern, powerful prompt
+- **conf.d/** - Additional configuration:
+  - `rustup.fish` - Cargo/Rust environment
+  - `uv.env.fish` - UV Python package manager environment
+- **functions/** - Custom functions:
+  - `pa.fish` - Quick Python virtual environment activation
+
+After applying dotfiles, install Fisher and plugins:
+
+```bash
+fish
+curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
+fisher install
+```
+
+Then configure your tide prompt theme: `tide configure`
 
 ## Prerequisites
 
@@ -30,6 +59,7 @@ package manager.
 | tmux | `sudo dnf install tmux` | `sudo apt install tmux` | `brew install tmux` |
 | fzf | `sudo dnf install fzf` | `sudo apt install fzf` | `brew install fzf` |
 | git | `sudo dnf install git` | `sudo apt install git` | `brew install git` |
+| fish | `sudo dnf install fish` | `sudo apt install fish` | `brew install fish` |
 | clipboard | `sudo dnf install wl-clipboard` † | `sudo apt install wl-clipboard` † | built-in (`pbcopy`) |
 | chezmoi | see [chezmoi install](https://www.chezmoi.io/install/) | same | `brew install chezmoi` |
 
@@ -144,8 +174,16 @@ dotfiles/                                    # chezmoi source dir
 │   │   │                                    #   submodule's .tmux.conf, resolved
 │   │   │                                    #   via {{ .chezmoi.sourceDir }}
 │   │   └── tmux.conf.local                  # customizations
-│   └── tmux-sessionizer/
-│       └── tmux-sessionizer.conf
+│   ├── tmux-sessionizer/
+│   │   └── tmux-sessionizer.conf
+│   └── fish/
+│       ├── config.fish                      # main fish configuration
+│       ├── fish_plugins                     # Fisher plugin list
+│       ├── conf.d/
+│       │   ├── rustup.fish
+│       │   └── uv.env.fish
+│       └── functions/
+│           └── pa.fish                      # custom python activate alias
 ├── dot_local/
 │   └── bin/
 │       └── executable_tmux-sessionizer      # +x via chezmoi prefix
@@ -211,5 +249,5 @@ chezmoi apply -v
 
 ## Scope
 
-This first iteration is **tmux-only**. zsh / nvim / git and friends can be
+Currently manages **tmux** and **fish shell**. nvim / git / other shells can be
 added under the same `dot_*` layout when ready.
