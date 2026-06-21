@@ -48,23 +48,56 @@ Install from <https://www.chezmoi.io/install/>.
 
 ## Install
 
-### On this machine (repo already cloned here)
+### Clone, then apply (recommended — works the same everywhere)
+
+This repo vendors [Oh My TMUX](https://github.com/gpakosz/.tmux) as a git
+submodule, and the base config is installed as a symlink pointing into it.
+**You must fetch the submodule during clone**, or the symlink will be broken
+(`submodules/oh-my-tmux/` is empty after a plain `git clone`).
 
 ```sh
+# 1. Clone WITH submodules (the --recursive is essential)
+git clone --recursive <your-git-remote-url> ~/projects/dotfiles
+cd ~/projects/dotfiles
+
+# 2. Point chezmoi at this clone as its source
 chezmoi init --source="$PWD"
+
+# 3. Apply
 chezmoi apply -v
 ```
 
-Run `chezmoi init` from inside this repo, or substitute the absolute path.
+`chezmoi apply` runs the one-shot TPM bootstrap, which clones TPM and installs
+all plugins into the XDG plugin directory.
 
-### On a new machine (clone from a remote)
+> ⚠️ `chezmoi init --source=<path>` does **not** fetch submodules for you —
+> only the recursive clone (or a manual `git submodule update --init --recursive`)
+> populates `submodules/oh-my-tmux/`. If you forget, `chezmoi apply` will
+> create a dangling symlink; re-run the submodule init and `chezmoi apply` to fix.
+
+#### Already cloned without `--recursive`?
+
+```sh
+git -C ~/projects/dotfiles submodule update --init --recursive
+```
+
+### All-in-one via chezmoi (alternative)
+
+`chezmoi init --apply <url>` clones into chezmoi's default source dir and runs
+the submodule init in one step. Use this if you don't care where the clone lives:
 
 ```sh
 chezmoi init --apply <your-git-remote-url>
 ```
 
-This clones the repo to chezmoi's source dir, applies everything, and runs the
-one-shot TPM bootstrap (which clones TPM and installs all plugins).
+### Inspecting the repo without chezmoi
+
+```sh
+git clone --recursive <your-git-remote-url>
+```
+
+Then either link the files manually (see *What gets installed* for the targets)
+or, from inside the clone: `chezmoi init --source="$PWD" && chezmoi apply`.
 
 ## Architecture
 
@@ -139,7 +172,9 @@ chezmoi apply -v
   (`~/.local/bin` should be). Verify with `which tmux-sessionizer`.
 - **Reload after editing `tmux.conf.local`** — `prefix + r`.
 - **Config not loading at all** — confirm `~/.config/tmux/tmux.conf` is a valid
-  symlink (`readlink ~/.config/tmux/tmux.conf`).
+  symlink (`readlink ~/.config/tmux/tmux.conf`) and that the target file exists.
+  A missing target means the `submodules/oh-my-tmux/` submodule wasn't
+  initialized — fix with `git -C "$(chezmoi source-path)" submodule update --init --recursive`.
 
 ## Scope
 
