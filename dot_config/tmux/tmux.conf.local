@@ -40,6 +40,10 @@ set -g @plugin 'tmux-plugins/tmux-copycat'
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'hiroppy/tmux-agent-sidebar'
+# Theme. Requires a Nerd Font in the terminal for the icon glyphs.
+# (TPM only supports 'user/repo' or full git URLs - NOT 'user/repo#version'.
+#  To pin a version, checkout the tag inside the cloned plugin dir.)
+set -g @plugin 'catppuccin/tmux'
 
 # =============================================
 # Plugin Settings
@@ -57,6 +61,29 @@ set -g @continuum-save-interval '3'
 # tmux-which-key - use the shipped example menu (skip the YAML build step,
 # which needs a vendored pyyaml that isn't included in the git checkout)
 set -g @tmux-which-key-disable-autobuild 1
+
+# =============================================
+# Theme: catppuccin
+# =============================================
+# Disable Oh My TMUX's built-in _apply_theme so catppuccin owns the status
+# line and colors cleanly (no race between the two). This is the documented
+# toggle shipped in gpakosz's own .tmux.conf.local example. _apply_configuration
+# still runs its other steps (256color, 24-bit truecolor, bindings, plugins,
+# #!important flags) — only the visual theme is skipped.
+tmux_conf_theme=disabled
+
+set -g @catppuccin_flavor 'mocha'                # latte | frappe | macchiato | mocha
+set -g @catppuccin_window_status_style 'rounded' # basic | rounded | slanted | custom
+
+# Status modules. catppuccin v2 requires explicit status-left/right set with
+# format expansion (E:) of the per-module options. Modules available include:
+# application, battery, cpu, date_time, directory, host, load, ram, session,
+# uptime, user, weather (some need extra plugins like tmux-cpu/tmux-battery).
+# See https://github.com/catppuccin/tmux/tree/main/docs/reference/status-line.md
+set -g status-left-length 100
+set -g status-right-length 100
+set -g status-left  "#{E:@catppuccin_status_session}"
+set -g status-right "#{E:@catppuccin_status_date_time}"
 
 # =============================================
 # Key Bindings

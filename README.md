@@ -1,9 +1,9 @@
 # dotfiles
 
 Portable, [chezmoi](https://www.chezmoi.io)-managed dotfiles. This first pass
-manages **tmux** only — built on [Oh My TMUX](https://github.com/gpakosz/.tmux)
-and [TPM](https://github.com/tmux-plugins/tpm), laid out cleanly under XDG
-(no files in `$HOME`).
+manages **tmux** only — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
+[TPM](https://github.com/tmux-plugins/tpm), and a [catppuccin](https://github.com/catppuccin/tmux)
+(mocha) theme, laid out cleanly under XDG (no files in `$HOME`).
 
 ## What gets installed
 
@@ -45,6 +45,36 @@ brew bundle install    # run from this repo, or: chezmoi cd && brew bundle insta
 ### chezmoi
 
 Install from <https://www.chezmoi.io/install/>.
+
+### Terminal font (required for the catppuccin icons)
+
+The catppuccin theme uses Nerd Font glyphs for its status line icons and
+window separators. Without one installed, those render as tofu boxes (□).
+
+This repo standardizes on **JetBrains Mono Nerd Font**. chezmoi deliberately
+does not manage fonts (see *Why chezmoi doesn't install system packages* —
+fonts are no exception despite being files, because per-OS install paths and
+update churn make it a poor fit). Install with your OS's mechanism:
+
+**Linux (manual, any distro):**
+
+```sh
+mkdir -p ~/.local/share/fonts
+cd ~/.local/share/fonts
+curl -fLO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip
+unzip JetBrainsMono.zip && rm JetBrainsMono.zip
+fc-cache -fv
+fc-list | grep -i 'JetBrains.*Nerd'   # verify
+```
+
+**macOS (Homebrew):**
+
+```sh
+brew install --cask font-jetbrains-mono-nerd-font
+```
+
+After installing, **set your terminal emulator's font to "JetBrainsMono Nerd Font"**.
+No tmux reload is needed once the terminal picks up the new font.
 
 ## Install
 
@@ -171,6 +201,9 @@ chezmoi apply -v
 - **`bind S` does nothing** — ensure `tmux-sessionizer` is on `$PATH`
   (`~/.local/bin` should be). Verify with `which tmux-sessionizer`.
 - **Reload after editing `tmux.conf.local`** — `prefix + r`.
+- **Tofu boxes (□) in the status line** — you're missing a Nerd Font. Install
+  JetBrains Mono Nerd Font (see *Prerequisites → Terminal font*) and set your
+  terminal's font to it.
 - **Config not loading at all** — confirm `~/.config/tmux/tmux.conf` is a valid
   symlink (`readlink ~/.config/tmux/tmux.conf`) and that the target file exists.
   A missing target means the `submodules/oh-my-tmux/` submodule wasn't
