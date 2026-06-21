@@ -40,7 +40,9 @@ set -g @plugin 'tmux-plugins/tmux-open'
 set -g @plugin 'tmux-plugins/tmux-copycat'
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'sainnhe/tmux-fzf'
-set -g @plugin 'hiroppy/tmux-agent-sidebar'
+# set -g @plugin 'hiroppy/tmux-agent-sidebar'  # Disabled: replaced with timvw/tmux-assistant-resurrect
+set -g @plugin 'timvw/tmux-assistant-resurrect'
+set -g @plugin 'craftzdog/tmux-claude-session-manager'
 # Theme. Requires a Nerd Font in the terminal for the icon glyphs.
 # (TPM only supports 'user/repo' or full git URLs - NOT 'user/repo#version'.
 #  To pin a version, checkout the tag inside the cloned plugin dir.)
