@@ -82,6 +82,7 @@ set -g @catppuccin_window_status_style 'rounded' # basic | rounded | slanted | c
 # See https://github.com/catppuccin/tmux/tree/main/docs/reference/status-line.md
 set -g status-left-length 100
 set -g status-right-length 100
+set -g status-position top                    # top | bottom (default)
 set -g status-left  "#{E:@catppuccin_status_session}"
 set -g status-right "#{E:@catppuccin_status_date_time}"
 
