@@ -1,0 +1,69 @@
+# =============================================
+# Oh-my-tmux Local Customizations
+# =============================================
+
+# Enable mouse
+set -g mouse on
+
+# Extended keys format for better key handling
+set -g extended-keys on
+set -g extended-keys-format csi-u
+
+# =============================================
+# TPM Plugins
+# =============================================
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'tmux-plugins/tmux-yank'
+set -g @plugin 'alexwforsythe/tmux-which-key'
+set -g @plugin 'tmux-plugins/tmux-open'
+set -g @plugin 'tmux-plugins/tmux-copycat'
+set -g @plugin 'wfxr/tmux-fzf-url'
+set -g @plugin 'sainnhe/tmux-fzf'
+set -g @plugin 'hiroppy/tmux-agent-sidebar'
+
+# =============================================
+# Plugin Settings
+# =============================================
+
+# Resurrect - session saving
+set -g @resurrect-capture-pane-contents 'on'
+set -g @resurrect-strategy-vim 'session'
+set -g @resurrect-strategy-nvim 'session'
+
+# Continuum - automatic session saving/restoring
+set -g @continuum-restore 'on'
+set -g @continuum-save-interval '3'
+
+# tmux-which-key - use the shipped example menu (skip the YAML build step,
+# which needs a vendored pyyaml that isn't included in the git checkout)
+set -g @tmux-which-key-disable-autobuild 1
+
+# =============================================
+# Key Bindings
+# =============================================
+
+# Reload config (now uses XDG path)
+bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded!"
+
+# Manual save/restore
+bind C-s run-shell '~/.tmux/plugins/tmux-resurrect/scripts/save.sh' \; display "Session saved!"
+bind C-r run-shell '~/.tmux/plugins/tmux-resurrect/scripts/restore.sh' \; display "Session restored!"
+
+# Cheat sheet - opens in less so it stays open
+# (disabled: tmux-copycat now uses prefix+/ for search, and tmux-which-key
+#  prefix+Space replaces the cheat sheet. Re-enable if you want it back.)
+# bind / split-window -h -c "#{pane_current_path}" "less ~/.tmux-cheat.txt"
+
+# tmux-sessionizer - fuzzy-pick a project under ~/projects and jump to it.
+# Creates a named session (folder basename) if it doesn't exist; switches if it does.
+# Search paths configured in ~/.config/tmux-sessionizer/tmux-sessionizer.conf
+bind S run-shell "tmux neww ~/.local/bin/tmux-sessionizer"
+
+
+# =============================================
+# Initialize TPM
+# =============================================
+run '~/.tmux/plugins/tpm/tpm'
