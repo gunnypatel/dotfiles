@@ -1,0 +1,10 @@
+# Repo metadata / source material — NOT dotfiles to install into $HOME.
+# (chezmoi auto-ignores .git/, .gitmodules, and its own control files.)
+
+# Documentation and macOS deps catalog (accessed via `chezmoi cd`, not applied)
+README.md
+Brewfile
+
+# Vendored Oh My TMUX base — used as the symlink target by
+# dot_config/tmux/symlink_tmux.conf.tmpl, not installed directly.
+submodules

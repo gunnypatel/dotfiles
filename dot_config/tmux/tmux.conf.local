@@ -1,6 +1,17 @@
 # =============================================
-# Oh-my-tmux Local Customizations
+# Oh My TMUX - local customizations
 # =============================================
+# Architecture (managed by chezmoi, see repo README):
+#   ~/.config/tmux/tmux.conf        -> symlink to oh-my-tmux base
+#                                      (submodules/oh-my-tmux/.tmux.conf)
+#   ~/.config/tmux/tmux.conf.local  -> THIS FILE (overrides, sourced last)
+#   ~/.config/tmux/plugins/         -> TPM + plugins
+#                                      (TPM auto-detects XDG because the
+#                                       base config lives under ~/.config/tmux)
+#
+# The base config resolves TMUX_CONF_LOCAL from whichever tmux.conf was loaded,
+# so this file is sourced automatically. `bind r` reloads the base, which
+# re-cascades here.
 
 # Enable mouse
 set -g mouse on
@@ -8,6 +19,12 @@ set -g mouse on
 # Extended keys format for better key handling
 set -g extended-keys on
 set -g extended-keys-format csi-u
+
+# Base directory for TPM + plugins. Referenced as #{@plugin_dir} below.
+# TPM itself auto-detects this XDG location because the base config lives
+# under ~/.config/tmux (see tpm: set_default_tpm_path); this option is for OUR
+# references in the key bindings and the TPM init line.
+set -g @plugin_dir '~/.config/tmux/plugins'
 
 # =============================================
 # TPM Plugins
@@ -49,8 +66,8 @@ set -g @tmux-which-key-disable-autobuild 1
 bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded!"
 
 # Manual save/restore
-bind C-s run-shell '~/.tmux/plugins/tmux-resurrect/scripts/save.sh' \; display "Session saved!"
-bind C-r run-shell '~/.tmux/plugins/tmux-resurrect/scripts/restore.sh' \; display "Session restored!"
+bind C-s run-shell '#{@plugin_dir}/tmux-resurrect/scripts/save.sh' \; display "Session saved!"
+bind C-r run-shell '#{@plugin_dir}/tmux-resurrect/scripts/restore.sh' \; display "Session restored!"
 
 # Cheat sheet - opens in less so it stays open
 # (disabled: tmux-copycat now uses prefix+/ for search, and tmux-which-key
@@ -60,10 +77,11 @@ bind C-r run-shell '~/.tmux/plugins/tmux-resurrect/scripts/restore.sh' \; displa
 # tmux-sessionizer - fuzzy-pick a project under ~/projects and jump to it.
 # Creates a named session (folder basename) if it doesn't exist; switches if it does.
 # Search paths configured in ~/.config/tmux-sessionizer/tmux-sessionizer.conf
-bind S run-shell "tmux neww ~/.local/bin/tmux-sessionizer"
+# Script is on PATH (installed by chezmoi to ~/.local/bin).
+bind S run-shell "tmux neww tmux-sessionizer"
 
 
 # =============================================
 # Initialize TPM
 # =============================================
-run '~/.tmux/plugins/tpm/tpm'
+run '#{@plugin_dir}/tpm/tpm'
