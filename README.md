@@ -60,8 +60,19 @@ package manager.
 | fzf | `sudo dnf install fzf` | `sudo apt install fzf` | `brew install fzf` |
 | git | `sudo dnf install git` | `sudo apt install git` | `brew install git` |
 | fish | `sudo dnf install fish` | `sudo apt install fish` | `brew install fish` |
+| ripgrep | `sudo dnf install ripgrep` | `sudo apt install ripgrep` | `brew install ripgrep` |
+| bat | `sudo dnf install bat` | `sudo apt install bat` | `brew install bat` |
+| fd | `sudo dnf install fd-find` | `sudo apt install fd-find` | `brew install fd` |
 | clipboard | `sudo dnf install wl-clipboard` † | `sudo apt install wl-clipboard` † | built-in (`pbcopy`) |
+| git-delta | `cargo install git-delta` ‡ | `cargo install git-delta` ‡ | `brew install git-delta` |
+| eza | `cargo install eza` ‡ | `cargo install eza` ‡ | `brew install eza` |
+| zoxide | `cargo install zoxide` ‡ | `cargo install zoxide` ‡ | `brew install zoxide` |
+| lazygit | `cargo install lazygit` ‡ | `cargo install lazygit` ‡ | `brew install lazygit` |
 | chezmoi | see [chezmoi install](https://www.chezmoi.io/install/) | same | `brew install chezmoi` |
+
+† `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank` auto-detects the available tool, so this needs no config.
+
+‡ Install with `cargo` after `sudo dnf/apt install cargo`. On Fedora, some of these (git-delta, eza, zoxide, lazygit) are also available via `dnf`, but `cargo` ensures the latest versions.
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank`
 auto-detects the available tool, so this needs no config.
