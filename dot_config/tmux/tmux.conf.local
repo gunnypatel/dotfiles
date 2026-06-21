@@ -32,6 +32,7 @@ set -g @plugin_dir '~/.config/tmux/plugins'
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
 set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @plugin 'tmux-plugins/tmux-cpu'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'alexwforsythe/tmux-which-key'
@@ -62,6 +63,16 @@ set -g @continuum-save-interval '3'
 # which needs a vendored pyyaml that isn't included in the git checkout)
 set -g @tmux-which-key-disable-autobuild 1
 
+# tmux-cpu - Nerd Font icons
+# CPU: nf-linux-cpu, RAM: nf-md-memory
+set -g @cpu_low_icon ""
+set -g @cpu_medium_icon ""
+set -g @cpu_high_icon ""
+
+set -g @ram_low_icon ""
+set -g @ram_medium_icon ""
+set -g @ram_high_icon ""
+
 # =============================================
 # Theme: catppuccin
 # =============================================
@@ -84,7 +95,7 @@ set -g status-left-length 100
 set -g status-right-length 100
 set -g status-position top                    # top | bottom (default)
 set -g status-left  "#{E:@catppuccin_status_session}"
-set -g status-right "#{E:@catppuccin_status_date_time}"
+set -g status-right " #{cpu_icon} #{cpu_percentage}  #{ram_icon} #{ram_percentage} "
 
 # =============================================
 # Key Bindings
