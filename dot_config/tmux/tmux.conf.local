@@ -16,9 +16,10 @@
 # Enable mouse
 set -g mouse on
 
-# Extended keys format for better key handling
-set -g extended-keys on
-set -g extended-keys-format csi-u
+# Extended keys disabled - csi-u causes iTerm2 to desync on mouse events
+# and sends garbled sequences for Ctrl+key combos.
+# set -g extended-keys on
+# set -g extended-keys-format csi-u
 
 # Base directory for TPM + plugins. Referenced as #{@plugin_dir} below.
 # TPM itself auto-detects this XDG location because the base config lives
@@ -37,12 +38,12 @@ set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'alexwforsythe/tmux-which-key'
 set -g @plugin 'tmux-plugins/tmux-open'
-set -g @plugin 'tmux-plugins/tmux-copycat'
+# set -g @plugin 'tmux-plugins/tmux-copycat'  # Disabled: deprecated, causes reload syntax error with tmux-yank
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'sainnhe/tmux-fzf'
 # set -g @plugin 'hiroppy/tmux-agent-sidebar'  # Disabled: replaced with tmux-assistant-resurrect
 set -g @plugin 'gunnypatel/tmux-assistant-resurrect'
-set -g @plugin 'craftzdog/tmux-claude-session-manager'
+set -g @plugin 'gunnypatel/tmux-claude-pane-picker'
 # Theme. Requires a Nerd Font in the terminal for the icon glyphs.
 # (TPM only supports 'user/repo' or full git URLs - NOT 'user/repo#version'.
 #  To pin a version, checkout the tag inside the cloned plugin dir.)
@@ -60,6 +61,14 @@ set -g @resurrect-strategy-nvim 'session'
 # Continuum - automatic session saving/restoring
 set -g @continuum-restore 'on'
 set -g @continuum-save-interval '3'
+
+# tmux-yank: disable M-y "yank-and-put" binding. Oh My TMUX's _apply_bindings
+# mangles the semicolon in the generated command, causing a 5-min reload hang.
+set -g @copy_mode_yank_put ''
+
+# Free up prefix+u for the Claude pane picker
+set -g @fzf-url-bind 'x'
+set -g @tpm-update 'C-u'
 
 # tmux-which-key - use the shipped example menu (skip the YAML build step,
 # which needs a vendored pyyaml that isn't included in the git checkout)
