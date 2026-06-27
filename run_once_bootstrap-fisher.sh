@@ -30,6 +30,12 @@ echo "chezmoi: reconciling fish plugins from fish_plugins"
 fisher update
 set -l plugins_ok $status
 
+if test $plugins_ok -eq 0
+    echo "chezmoi: applying catppuccin-mocha fish color theme"
+    fish_config theme choose catppuccin-mocha --color-theme=dark
+    or echo "chezmoi: fish_config theme reported an error (continuing)" >&2
+end
+
 if test $plugins_ok -eq 0; and type -q tide
     echo "chezmoi: applying tide theme"
     tide configure --auto --style=Rainbow --prompt_colors='True color' \
