@@ -11,3 +11,21 @@ submodules
 
 # Machine-local secrets / work config (never committed)
 .config/fish/conf.d/*.secret.fish
+
+# Fish: plugin code is installed/managed by Fisher from fish_plugins, and
+# fish_variables is local universal-variable state (history, theme). Neither
+# belongs in the repo; these guards also keep `chezmoi add`/`diff` clean.
+.config/fish/fish_variables
+.config/fish/fish_variables.*
+.config/fish/completions
+.config/fish/conf.d/_tide_init.fish
+.config/fish/conf.d/fish_frozen_theme.fish
+.config/fish/conf.d/fish_frozen_key_bindings.fish
+.config/fish/conf.d/nvm.fish
+.config/fish/functions/fish_prompt.fish
+.config/fish/functions/fish_mode_prompt.fish
+.config/fish/functions/fisher.fish
+.config/fish/functions/nvm.fish
+.config/fish/functions/_nvm_*.fish
+.config/fish/functions/_tide_*.fish
+.config/fish/functions/tide

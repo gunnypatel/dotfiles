@@ -37,12 +37,15 @@ The fish configuration includes:
 - **functions/** - Custom functions:
   - `pa.fish` - Quick Python virtual environment activation
 
-After applying dotfiles, install Fisher and plugins:
+Fisher and its plugins are installed automatically on `chezmoi apply` by
+`run_once_bootstrap-fisher.sh`, which runs `fisher update` against
+`fish_plugins`. To install manually (e.g. if the bootstrap was skipped because
+fish wasn't installed yet, or it failed):
 
 ```bash
 fish
 curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
-fisher install
+fisher update
 ```
 
 Then configure your tide prompt theme: `tide configure`
@@ -128,8 +131,9 @@ This single command:
 - Fetches git submodules (including Oh My TMUX)
 - Applies all dotfiles to your home directory
 
-`chezmoi apply` runs the one-shot TPM bootstrap, which clones TPM and installs
-all plugins into the XDG plugin directory.
+`chezmoi apply` runs one-shot bootstraps: TPM (clones TPM and installs all tmux
+plugins into the XDG plugin directory) and Fisher (installs Fisher and
+reconciles the fish plugins in `fish_plugins`).
 
 ### Inspecting the repo without chezmoi
 
@@ -168,6 +172,7 @@ dotfiles/                                    # chezmoi source dir
 ├── dot_local/
 │   └── bin/
 │       └── executable_tmux-sessionizer      # +x via chezmoi prefix
+├── run_once_bootstrap-fisher.sh             # installs Fisher + fish plugins
 └── run_once_bootstrap-tmux-plugins.sh       # clones TPM + installs plugins
 ```
 
@@ -217,6 +222,9 @@ chezmoi apply -v
 - **Plugins didn't install on `chezmoi apply`** — the bootstrap runs a
   headless tmux session to trigger TPM. If anything went wrong, just open tmux
   and press `prefix + I`.
+- **Fish plugins didn't install on `chezmoi apply`** — the Fisher bootstrap
+  installs Fisher and runs `fisher update` against `fish_plugins`. If it was
+  skipped (fish not on `$PATH` yet) or failed, open fish and run `fisher update`.
 - **`bind S` does nothing** — ensure `tmux-sessionizer` is on `$PATH`
   (`~/.local/bin` should be). Verify with `which tmux-sessionizer`.
 - **Reload after editing `tmux.conf.local`** — `prefix + r`.
