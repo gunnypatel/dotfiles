@@ -48,7 +48,9 @@ curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fi
 fisher update
 ```
 
-Then configure your tide prompt theme: `tide configure`
+The tide prompt theme is applied automatically by the bootstrap (see the
+`tide configure --auto` recipe in `run_once_bootstrap-fisher.sh`). To customize
+it, run `tide configure` interactively and update that recipe to match.
 
 ## Prerequisites
 
@@ -172,7 +174,7 @@ dotfiles/                                    # chezmoi source dir
 ├── dot_local/
 │   └── bin/
 │       └── executable_tmux-sessionizer      # +x via chezmoi prefix
-├── run_once_bootstrap-fisher.sh             # installs Fisher + fish plugins
+├── run_once_bootstrap-fisher.sh             # Fisher + plugins + tide theme
 └── run_once_bootstrap-tmux-plugins.sh       # clones TPM + installs plugins
 ```
 
