@@ -8,3 +8,6 @@ Brewfile
 # Vendored Oh My TMUX base — used as the symlink target by
 # dot_config/tmux/symlink_tmux.conf.tmpl, not installed directly.
 submodules
+
+# Machine-local secrets / work config (never committed)
+.config/fish/conf.d/*.secret.fish

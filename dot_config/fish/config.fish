@@ -1,14 +1,20 @@
 if status is-interactive
-    # Commands to run in interactive sessions can go here
-
     # fzf key bindings: Ctrl-R (history), Ctrl-T (file find), Alt-C (cd)
-    fzf --fish | source
+    command -q fzf; and fzf --fish | source
+
+    # zoxide (smart cd)
+    command -q zoxide; and zoxide init fish | source
+
+    # docker completions
+    command -q docker; and docker completion fish | source
+
+    # bun completions
+    command -q bun; and bun completions | source
+
+    # uv / uvx completions
+    command -q uv; and uv generate-shell-completion fish | source
+    command -q uvx; and uvx --generate-shell-completion fish | source
 end
-
-
-# opencode
-fish_add_path /home/gunny/.opencode/bin
-set PATH $HOME/.jenv/bin $PATH
 
 # pi - coding agent alias
 alias pi='npx @earendil-works/pi-coding-agent'
@@ -24,7 +30,3 @@ alias ts='tmux-sessionizer'
 
 # claude
 alias csp='claude --dangerously-skip-permissions'
-
-# if status is-interactive && not set -q ZELLIJ
-#     zellij
-# end
