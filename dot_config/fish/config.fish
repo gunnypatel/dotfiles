@@ -8,9 +8,6 @@ if status is-interactive
     # docker completions
     command -q docker; and docker completion fish | source
 
-    # bun completions
-    command -q bun; and bun completions | source
-
     # uv / uvx completions
     command -q uv; and uv generate-shell-completion fish | source
     command -q uvx; and uvx --generate-shell-completion fish | source
