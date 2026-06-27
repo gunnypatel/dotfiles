@@ -3,7 +3,20 @@ if status is-interactive
     command -q fzf; and fzf --fish | source
 
     # zoxide (smart cd)
-    command -q zoxide; and zoxide init fish | source
+    command -q zoxide; and zoxide init fish --cmd cd | source
+
+    # bat (cat with syntax highlighting, no pager)
+    if command -q bat
+        alias cat='bat --paging=never'
+    end
+
+    # eza (modern ls)
+    if command -q eza
+        alias ls='eza'
+        alias ll='eza -l'
+        alias la='eza -la'
+        alias lt='eza --tree'
+    end
 
     # docker completions
     command -q docker; and docker completion fish | source
