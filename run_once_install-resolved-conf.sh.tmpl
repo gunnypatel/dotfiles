@@ -1,0 +1,43 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Manage /etc/systemd/resolved.conf (system-wide DNS resolver settings:
+# DNS-over-TLS, DNSSEC, and LLMNR).
+#
+# Why a script and not `chezmoi add`: chezmoi only manages files under its
+# destination dir ($HOME). /etc/systemd/resolved.conf is a root-owned system
+# file outside $HOME, so it cannot be tracked as a normal source entry. Instead
+# we render the desired content here and install it via sudo.
+#
+# Linux-only: on other OSes this template renders to nothing, so chezmoi skips
+# it entirely (no script is created or run).
+#
+# Idempotent: the file is only rewritten and systemd-resolved only restarted
+# when the content actually changes, so `chezmoi apply` is safe to re-run.
+# Editing the heredoc below changes this script's hash, which makes chezmoi
+# re-run it on the next apply.
+set -euo pipefail
+
+DEST=/etc/systemd/resolved.conf
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+cat > "$TMP" <<'EOF'
+[Resolve]
+DNSOverTLS=opportunistic
+DNSSEC=yes
+LLMNR=no
+EOF
+
+# Nothing to do if the desired content is already in place. `2>/dev/null` hides
+# the "No such file or directory" noise on a first-ever apply (then falls
+# through to the install below, which creates the file).
+if sudo cmp -s "$DEST" "$TMP" 2>/dev/null; then
+    exit 0
+fi
+
+# Install atomically with the correct owner/mode, then apply the change. There
+# is a sub-second DNS blip while systemd-resolved restarts.
+sudo install -m 0644 -o root -g root "$TMP" "$DEST"
+sudo systemctl restart systemd-resolved
+echo "chezmoi: updated $DEST and restarted systemd-resolved"
+{{- end -}}
