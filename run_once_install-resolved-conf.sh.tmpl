@@ -24,7 +24,7 @@ trap 'rm -f "$TMP"' EXIT
 cat > "$TMP" <<'EOF'
 [Resolve]
 DNSOverTLS=opportunistic
-DNSSEC=yes
+DNSSEC=no
 LLMNR=no
 EOF
 
