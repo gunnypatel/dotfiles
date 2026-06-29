@@ -18,8 +18,12 @@ if status is-interactive
         alias lt='eza --tree'
     end
 
-    # docker completions
-    command -q docker; and docker completion fish | source
+    # docker completions (fall back to podman — see docker alias below)
+    if command -q docker
+        docker completion fish | source
+    else if command -q podman
+        podman completion fish | source
+    end
 
     # uv / uvx completions
     command -q uv; and uv generate-shell-completion fish | source
@@ -40,3 +44,8 @@ alias ts='tmux-sessionizer'
 
 # claude
 alias csp='claude --dangerously-skip-permissions'
+
+# docker: alias to podman only when podman is installed AND docker is not
+if not command -q docker; and command -q podman
+    alias docker='podman'
+end
