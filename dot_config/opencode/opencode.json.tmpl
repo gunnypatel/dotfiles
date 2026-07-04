@@ -1,0 +1,28 @@
+{{- /* opencode config. The MCP bearer token is injected from chezmoi data
+   (defined in ~/.config/chezmoi/chezmoi.toml under [data.opencode]) so the
+   secret never enters the repo. The z.ai web-reader MCP entry is emitted only
+   when zAiWebReaderMcpToken is set — omit the [data.opencode] table (or leave
+   the key empty) on systems that shouldn't have it. Other mcp entries are
+   unaffected. */ -}}
+{{- $token := .opencode.zAiWebReaderMcpToken -}}
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+  "permission": {
+    "read": {},
+    "external_directory": {}
+  },
+  "mcp": {
+{{- if $token }}
+    "web-reader": {
+      "type": "remote",
+      "url": "https://api.z.ai/api/mcp/web_reader/mcp",
+      "headers": {
+        "Authorization": "Bearer {{ $token }}"
+      }
+    }
+{{- end }}
+  }
+}
