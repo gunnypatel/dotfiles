@@ -45,6 +45,9 @@ alias ts='tmux-sessionizer'
 # claude
 alias csp='claude --dangerously-skip-permissions'
 
+# opencode
+alias osp='opencode --dangerously-skip-permissions'
+
 # docker: alias to podman only when podman is installed AND docker is not
 if not command -q docker; and command -q podman
     alias docker='podman'
