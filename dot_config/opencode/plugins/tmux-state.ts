@@ -29,7 +29,13 @@ export const TmuxStatePlugin: Plugin = async ({ $ }) => {
           await setState("waiting")
           break
         case "session.status":
-          if ((event.properties as { status?: string } | undefined)?.status === "busy") {
+          // session.status payload: { sessionID, status: { type: "busy"|"idle"|"retry" } }
+          // (idle transitions are also emitted as a separate session.idle event,
+          // so we only need to map busy -> working here.)
+          if (
+            (event.properties as { status?: { type?: string } } | undefined)
+              ?.status?.type === "busy"
+          ) {
             await setState("working")
           }
           break
