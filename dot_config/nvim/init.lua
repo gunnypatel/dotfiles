@@ -8,6 +8,7 @@
 -- Organized into sections:
 --   1. Options   2. Keymaps   3. Plugin manager (vim.pack)   4. UI / core UX
 --   5. Search (Telescope)   6. LSP   7. Formatting   8. Autocomplete   9. Treesitter
+--   10. Debugging (DAP)
 
 -- ============================================================
 -- SECTION 1: OPTIONS
@@ -162,6 +163,15 @@ do
         return
       end
 
+      if name == 'markdown-preview.nvim' then
+        -- Build the preview app by running the plugin's download script. Done
+        -- directly (not via mkdp#util#install) because the plugin's autoload
+        -- isn't resolvable yet during the PackChanged 'install' event. Fetches
+        -- a prebuilt binary (needs curl + tar, NOT npm/yarn).
+        run_build(name, { 'sh', 'install.sh' }, ev.data.path .. '/app')
+        return
+      end
+
       if name == 'nvim-treesitter' then
         if not ev.data.active then
           vim.cmd.packadd 'nvim-treesitter'
@@ -210,6 +220,7 @@ do
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+      { '<leader>d', group = '[D]ebug' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -284,6 +295,14 @@ do
   vim.keymap.set('n', '<leader>e', '<Cmd>Neotree toggle<CR>', { desc = '[E]xplorer (toggle)' })
   vim.keymap.set('n', '<leader>ge', '<Cmd>Neotree git_status toggle<CR>', { desc = '[G]it [E]xplorer' })
   vim.keymap.set('n', '<leader>be', '<Cmd>Neotree buffers toggle<CR>', { desc = '[B]uffer [E]xplorer' })
+
+  -- [[ markdown-preview ]] — live-preview Markdown in a browser as you edit.
+  -- The `markdown` and `markdown_inline` treesitter parsers (SECTION 9) give
+  -- highlighting; the preview binary is built by the PackChanged hook in
+  -- SECTION 3. Toggle the browser preview with <leader>mp.
+  vim.g.mkdp_theme = 'dark' -- dark preview to match the catppuccin stack
+  vim.pack.add { gh 'iamcco/markdown-preview.nvim' }
+  vim.keymap.set('n', '<leader>mp', '<Cmd>MarkdownPreviewToggle<CR>', { desc = '[M]arkdown [P]review toggle' })
 end
 
 -- ============================================================
@@ -471,6 +490,7 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     'ruff', -- Python linter/formatter (used by conform.nvim)
+    'debugpy', -- Python debug adapter (used by nvim-dap, SECTION 10)
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -598,12 +618,77 @@ do
 end
 
 -- ============================================================
--- SECTION 10: OPTIONAL EXAMPLES / NEXT STEPS
+-- SECTION 10: DEBUGGING (DAP)
+-- nvim-dap + nvim-dap-ui for Python (debugpy). Lua/other languages can be
+-- added later. debugpy is auto-installed by mason-tool-installer (SECTION 6).
+-- VS Code-style keys: F5 start/continue, F9 breakpoint, F10/F11/S-F11 step.
+-- ============================================================
+do
+  vim.pack.add {
+    gh 'mfussenegger/nvim-dap',
+    gh 'rcarriga/nvim-dap-ui',
+    gh 'nvim-neotest/nvim-nio', -- required by nvim-dap-ui
+    gh 'theHamsta/nvim-dap-virtual-text',
+  }
+
+  local dap = require 'dap'
+  local dapui = require 'dapui'
+
+  dapui.setup()
+  require('nvim-dap-virtual-text').setup {}
+
+  -- Open/close the UI automatically with debug sessions
+  dap.listeners.after.event_initialized['dapui_config'] = dapui.open
+  dap.listeners.before.event_terminated['dapui_config'] = dapui.close
+  dap.listeners.before.event_exited['dapui_config'] = dapui.close
+
+  -- Python adapter. debugpy is Mason-installed (SECTION 6); resolve the path
+  -- when a session starts — it may not be on PATH during the very first launch.
+  dap.adapters.python = function(cb, config)
+    if config.request == 'attach' then
+      local port = (config.connect or {}).port or 5678
+      local host = (config.connect or {}).host or '127.0.0.1'
+      cb { type = 'server', port = port, host = host, options = { source_filetype = 'python' } }
+    else
+      cb {
+        type = 'executable',
+        command = vim.fn.exepath 'debugpy-adapter',
+        options = { source_filetype = 'python' },
+      }
+    end
+  end
+
+  dap.configurations.python = {
+    {
+      type = 'python',
+      request = 'launch',
+      name = 'Launch current file',
+      program = '${file}',
+      pythonPath = function()
+        -- Use the active virtualenv's python if one is active, else python3
+        local venv = os.getenv 'VIRTUAL_ENV'
+        if venv and venv ~= '' then
+          return venv .. '/bin/python'
+        end
+        return vim.fn.exepath 'python3'
+      end,
+    },
+  }
+
+  vim.keymap.set('n', '<F5>', dap.continue, { desc = 'Debug: Start/Continue' })
+  vim.keymap.set('n', '<F9>', dap.toggle_breakpoint, { desc = 'Debug: Toggle breakpoint' })
+  vim.keymap.set('n', '<F10>', dap.step_over, { desc = 'Debug: Step over' })
+  vim.keymap.set('n', '<F11>', dap.step_into, { desc = 'Debug: Step into' })
+  vim.keymap.set('n', '<S-F11>', dap.step_out, { desc = 'Debug: Step out' })
+  vim.keymap.set('n', '<leader>du', dapui.toggle, { desc = '[D]ebug [U]I toggle' })
+end
+
+-- ============================================================
+-- SECTION 11: OPTIONAL EXAMPLES / NEXT STEPS
 -- Uncomment to enable additional kickstart-style plugins.
 -- ============================================================
 do
   -- Examples (originally in kickstart's repo under kickstart/plugins/):
-  -- require 'kickstart.plugins.debug'        -- nvim-dap
   -- require 'kickstart.plugins.indent_line'  -- mini.indentscope
   -- require 'kickstart.plugins.lint'         -- nvim-lint
   -- require 'kickstart.plugins.autopairs'    -- mini.autopairs

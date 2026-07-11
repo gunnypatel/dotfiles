@@ -68,6 +68,11 @@ formatters on first launch.
 - **Theme**: catppuccin (mocha), matching the kitty/tmux/wezterm setup.
 - **File explorer**: [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) (`<leader>e`
   toggles the sidebar; `nvim .` opens it via netrw hijack).
+- **Markdown preview**: [markdown-preview.nvim](https://github.com/iamcco/markdown-preview.nvim)
+  (`<leader>mp` opens a live browser preview).
+- **Debugging**: [nvim-dap](https://github.com/mfussenegger/nvim-dap) +
+  [nvim-dap-ui](https://github.com/rcarriga/nvim-dap-ui) for Python (debugpy
+  auto-installed via Mason; Lua/other languages can be added later).
 - **Plugin manager**: `vim.pack` (built-in, requires Neovim ≥0.12). Plugin
   versions are pinned in `~/.config/nvim/nvim-pack-lock.json`, committed after
   the first launch for reproducibility.
@@ -83,6 +88,10 @@ Key bindings (leader is `<space>`):
 | `<leader>f` | Format buffer |
 | `grd` / `grr` | Go to definition / references |
 | `<leader>th` | Toggle inlay hints |
+| `<leader>mp` | Toggle Markdown preview (browser) |
+| `<F5>` / `<F9>` | Debug: start/continue · toggle breakpoint |
+| `<F10>` / `<F11>` / `<S-F11>` | Debug: step over / into / out |
+| `<leader>du` | Toggle debug UI |
 
 ## Prerequisites
 
