@@ -44,6 +44,8 @@ alias ts='tmux-sessionizer'
 
 # claude
 alias csp='claude --dangerously-skip-permissions'
+alias csp-gpt='claude --settings \'{"env":{"CLAUDE_CODE_USE_BEDROCK":"0"}}\' --model=gpt-5.5 --dangerously-skip-permissions'
+alias claude-gpt='claude --settings \'{"env":{"CLAUDE_CODE_USE_BEDROCK":"0"}}\' --model=gpt-5.5'
 
 # opencode
 alias osp='opencode --dangerously-skip-permissions'
