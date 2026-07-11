@@ -4,7 +4,7 @@
    when zAiWebReaderMcpToken is set — omit the [data.opencode] table (or leave
    the key empty) on systems that shouldn't have it. Other mcp entries are
    unaffected. */ -}}
-{{- $token := .opencode.zAiWebReaderMcpToken -}}
+{{- $token := dig "opencode" "zAiWebReaderMcpToken" "" . -}}
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
