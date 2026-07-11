@@ -41,3 +41,10 @@ submodules
 .config/opencode/settings.json
 .config/opencode/.gitignore
 .config/opencode/plugins/session-tracker.js
+
+# nvim: init.lua (+ nvim-pack-lock.json once generated) is managed. Everything
+# else is runtime state — vim.pack plugin installs, Mason tools, treesitter
+# parsers, swap/undo/shada — kept out so `chezmoi add`/`diff` stay clean.
+.local/share/nvim
+.local/state/nvim
+.cache/nvim

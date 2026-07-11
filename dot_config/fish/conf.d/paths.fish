@@ -3,6 +3,9 @@ test -d $HOME/.local/bin; and fish_add_path $HOME/.local/bin
 test -d $HOME/bin; and fish_add_path $HOME/bin
 test -d /usr/local/opt/libpq/bin; and fish_add_path /usr/local/opt/libpq/bin
 
+# Neovim (official release tarball extracted to /opt)
+test -d /opt/nvim-linux-x86_64/bin; and fish_add_path /opt/nvim-linux-x86_64/bin
+
 # Bun
 set -gx BUN_INSTALL "$HOME/.bun"
 test -d $BUN_INSTALL/bin; and fish_add_path $BUN_INSTALL/bin

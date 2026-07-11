@@ -1,7 +1,7 @@
 # dotfiles
 
 Portable, [chezmoi](https://www.chezmoi.io)-managed dotfiles. Currently manages
-**tmux** and **fish shell** — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
+**tmux**, **fish shell**, and **neovim** — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
 [TPM](https://github.com/tmux-plugins/tpm), [catppuccin](https://github.com/catppuccin/tmux)
 (mocha) theme, and [Fisher](https://github.com/jorgebucaran/fisher) plugins,
 laid out cleanly under XDG (no files in `$HOME`).
@@ -19,6 +19,8 @@ laid out cleanly under XDG (no files in `$HOME`).
 | `~/.config/fish/fish_plugins` | Fisher plugin list |
 | `~/.config/fish/conf.d/*.fish` | fish configuration snippets |
 | `~/.config/fish/functions/*.fish` | custom fish functions |
+| `~/.config/nvim/init.lua` | Neovim config (kickstart-inspired, single-file, `vim.pack`) |
+| `~/.config/nvim/nvim-pack-lock.json` | pinned plugin versions (committed after first launch) |
 
 The tmux plugin install location is centralized in `tmux.conf.local` as `@plugin_dir`
 and referenced via `#{@plugin_dir}` — change it in one place to move plugins.
@@ -52,6 +54,36 @@ The tide prompt theme is applied automatically by the bootstrap (see the
 `tide configure --auto` recipe in `run_once_bootstrap-fisher.sh`). To customize
 it, run `tide configure` interactively and update that recipe to match.
 
+### Neovim
+
+The Neovim config is a single `init.lua`, written fresh but inspired by
+[kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) (its current
+`vim.pack` variant). Unlike tmux/fish it needs **no `run_once` bootstrap**:
+plugins are managed by Neovim's built-in [`vim.pack`](https://neovim.io/doc/user/vim.pack.html),
+and [Mason](https://github.com/mason-org/mason.nvim) auto-installs the LSPs and
+formatters on first launch.
+
+- **Languages**: Lua (lua-language-server + StyLua) and Python (basedpyright +
+  ruff). Treesitter parsers install automatically.
+- **Theme**: catppuccin (mocha), matching the kitty/tmux/wezterm setup.
+- **File explorer**: [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) (`<leader>e`
+  toggles the sidebar; `nvim .` opens it via netrw hijack).
+- **Plugin manager**: `vim.pack` (built-in, requires Neovim ≥0.12). Plugin
+  versions are pinned in `~/.config/nvim/nvim-pack-lock.json`, committed after
+  the first launch for reproducibility.
+
+Key bindings (leader is `<space>`):
+
+| Key | Action |
+|-----|--------|
+| `<leader>sf` | Find files (Telescope) |
+| `<leader>sg` | Live grep |
+| `<leader>sh` | Search help |
+| `<leader>e` | Toggle file explorer (neo-tree) |
+| `<leader>f` | Format buffer |
+| `grd` / `grr` | Go to definition / references |
+| `<leader>th` | Toggle inlay hints |
+
 ## Prerequisites
 
 ### System packages
@@ -73,11 +105,18 @@ package manager.
 | eza | `cargo install eza` ‡ | `cargo install eza` ‡ | `brew install eza` |
 | zoxide | `cargo install zoxide` ‡ | `cargo install zoxide` ‡ | `brew install zoxide` |
 | lazygit | `cargo install lazygit` ‡ | `cargo install lazygit` ‡ | `brew install lazygit` |
+| neovim (≥0.12) †† | `sudo dnf install neovim` | PPA / release tarball (see ††) | `brew install neovim` |
+| make | `sudo dnf install make` | `sudo apt install make` | Xcode CLT |
+| unzip | `sudo dnf install unzip` | `sudo apt install unzip` | Xcode CLT |
+| gcc (C compiler) | `sudo dnf install gcc` | `sudo apt install build-essential` | Xcode CLT |
+| tree-sitter | `sudo dnf install tree-sitter` | `sudo apt install tree-sitter-cli` | `brew install tree-sitter` |
 | chezmoi | see [chezmoi install](https://www.chezmoi.io/install/) | same | `brew install chezmoi` |
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank` auto-detects the available tool, so this needs no config.
 
 ‡ Install with `cargo` after `sudo dnf/apt install cargo`. On Fedora, some of these (git-delta, eza, zoxide, lazygit) are also available via `dnf`, but `cargo` ensures the latest versions.
+
+†† The Neovim config uses `vim.pack` and the `vim.lsp.config` / `vim.lsp.enable` API, which require Neovim ≥0.12. Fedora's `dnf install neovim` is recent enough. On Ubuntu/Debian the stock package is usually too old — install via the [neovim PPA](https://launchpad.net/~neovim-ppa/+archive/ubuntu/unstable) or the [release tarball/appimage](https://github.com/neovim/neovim/releases). `make`, `unzip`, and the C compiler come from `build-essential` (Debian/Ubuntu) or `@development-tools` (Fedora); on macOS they're provided by the Xcode Command Line Tools.
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank`
 auto-detects the available tool, so this needs no config.
@@ -131,7 +170,7 @@ chezmoi init --apply --verbose <your-git-remote-url>
 This single command:
 - Clones your repo to `~/.local/share/chezmoi` (chezmoi's source directory)
 - Fetches git submodules (including Oh My TMUX)
-- Applies all dotfiles to your home directory
+- Applies all dotfiles to your home directory (Neovim plugins/LSPs install on first `nvim` launch)
 
 `chezmoi apply` runs one-shot bootstraps: TPM (clones TPM and installs all tmux
 plugins into the XDG plugin directory) and Fisher (installs Fisher and
@@ -163,14 +202,16 @@ dotfiles/                                    # chezmoi source dir
 │   │   └── tmux.conf.local                  # customizations
 │   ├── tmux-sessionizer/
 │   │   └── tmux-sessionizer.conf
-│   └── fish/
-│       ├── config.fish                      # main fish configuration
-│       ├── fish_plugins                     # Fisher plugin list
-│       ├── conf.d/
-│       │   ├── rustup.fish
-│       │   └── uv.env.fish
-│       └── functions/
-│           └── pa.fish                      # custom python activate alias
+│   ├── fish/
+│   │   ├── config.fish                      # main fish configuration
+│   │   ├── fish_plugins                     # Fisher plugin list
+│   │   ├── conf.d/
+│   │   │   ├── rustup.fish
+│   │   │   └── uv.env.fish
+│   │   └── functions/
+│   │       └── pa.fish                      # custom python activate alias
+│   └── nvim/
+│       └── init.lua                         # kickstart-inspired single-file config (vim.pack)
 ├── dot_local/
 │   └── bin/
 │       └── executable_tmux-sessionizer      # +x via chezmoi prefix
@@ -237,8 +278,14 @@ chezmoi apply -v
   symlink (`readlink ~/.config/tmux/tmux.conf`) and that the target file exists.
   A missing target means the `submodules/oh-my-tmux/` submodule wasn't
   initialized — fix with `git -C "$(chezmoi source-path)" submodule update --init --recursive`.
+- **nvim plugins/LSPs didn't install on first launch** — `vim.pack` (plugins) and
+  Mason (LSPs/formatters) run on first launch. If something didn't, open nvim and
+  run `:lua vim.pack.update()` (plugins) or `:Mason` (tools), then `:checkhealth`.
+- **nvim errors about `vim.pack` or `vim.lsp.config`** — these require Neovim
+  ≥0.12. Check `nvim --version`; on Ubuntu/Debian the stock package is usually too
+  old (install via the neovim PPA or the release tarball/appimage).
 
 ## Scope
 
-Currently manages **tmux** and **fish shell**. nvim / git / other shells can be
-added under the same `dot_*` layout when ready.
+Currently manages **tmux**, **fish shell**, and **neovim**. git / other shells
+can be added under the same `dot_*` layout when ready.
