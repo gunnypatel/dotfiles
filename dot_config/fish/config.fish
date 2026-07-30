@@ -49,6 +49,7 @@ alias claude-gpt='claude --settings \'{"env":{"CLAUDE_CODE_USE_BEDROCK":"0"}}\' 
 
 # opencode
 alias osp='opencode --dangerously-skip-permissions'
+alias ocy='opencode --yolo'
 
 # docker: alias to podman only when podman is installed AND docker is not
 if not command -q docker; and command -q podman
