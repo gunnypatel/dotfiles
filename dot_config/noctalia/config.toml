@@ -1,10 +1,20 @@
-# Noctalia shell — hand-written seed config (hot-reloaded on save).
+# Noctalia shell — hand-written config (hot-reloaded on save).
 # GUI changes land in ~/.local/state/noctalia/settings.toml and override this
 # file; this file is never rewritten. Validate: `noctalia config validate`.
 
 [shell]
 font_family  = "JetBrainsMono Nerd Font"
 polkit_agent = true
+corner_radius_scale = 0.75
+telemetry_enabled  = true
+
+[shell.launcher]
+compact          = true
+show_app_actions = true
+
+[shell.panel]
+control_center_placement = "floating"
+control_center_position  = "center"
 
 [theme]
 mode    = "dark"
@@ -14,6 +24,12 @@ builtin = "Catppuccin"
 [bar.default]
 # Bump content size (icons, spacing, base text) to match the 1.25 compositor scale
 scale = 1.25
+start  = ["launcher"]
+center = ["workspaces"]
+end = [
+    "media", "tray", "notifications", "clipboard", "network", "bluetooth",
+    "volume", "brightness", "battery", "control-center", "session", "date", "clock",
+]
 
 [bar.default.monitor.odyssey]
 # Half-width centered bar, only on the 57" ultrawide: 6144 logical px wide
@@ -22,6 +38,23 @@ scale = 1.25
 # monitors get the default bar (margin_ends = 100).
 match       = "Odyssey G95NC"
 margin_ends = 1536
+
+[control_center]
+sidebar         = "full"
+sidebar_section = "full"
+width           = 1000
+
+[battery.device."/org/freedesktop/UPower/devices/battery_hidpp_battery_0"]
+warning_threshold = 15
+
+[system.monitor]
+cpu_poll_seconds     = 5
+disk_poll_seconds    = 30
+memory_poll_seconds  = 5
+network_poll_seconds = 10
+
+[wallpaper.default]
+path = "/usr/share/noctalia/assets/noctalia-wallpaper.png"
 
 # Lock after 10 min idle, blank the screen at 11 min (wakes on activity).
 [idle.behavior.lock]
