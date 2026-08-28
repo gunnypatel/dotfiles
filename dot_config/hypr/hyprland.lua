@@ -106,21 +106,59 @@ hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + C", hl.dsp.window.center())               -- center a floating window
 hl.bind(mainMod .. " + M", hl.dsp.layout("swapwithmaster"))      -- promote focused window to center
 
+-- Master width: SUPER+[ / SUPER+] adjusts the master's share by 5%.
+-- Per-workspace: each workspace keeps its own ratio for its lifetime.
+hl.bind(mainMod .. " + bracketleft",  hl.dsp.layout("mfact -0.05"))
+hl.bind(mainMod .. " + bracketright", hl.dsp.layout("mfact 0.05"))
+
 -- Focus / move, vim-style (matches Ctrl+hjkl window nav in nvim)
 for key, dir in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
     hl.bind(mainMod .. " + " .. key:upper(),         hl.dsp.focus({ direction = dir }))
     hl.bind(mainMod .. " + SHIFT + " .. key:upper(), hl.dsp.window.move({ direction = dir }))
 end
 
--- Workspaces 1-9; SUPER+SHIFT+N moves the window there
+-- Workspaces 1-9; SUPER+SHIFT+N moves the window there (focus follows),
+-- SUPER+CTRL+N parks it there silently (stays on the current workspace)
 for i = 1, 9 do
     hl.bind(mainMod .. " + " .. i,         hl.dsp.focus({ workspace = i }))
     hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
+    hl.bind(mainMod .. " + CTRL + " .. i,  hl.dsp.window.move({ workspace = i, follow = false }))
 end
 
--- Scratchpad: drop-down layer over the current workspace
+-- Gaming workspace: a named workspace outside the 1-9 strip, summoned with
+-- SUPER+G. Workspace rules can only pin orientation (not master width), so
+-- the 70% master is re-applied whenever the workspace gains focus or a
+-- window opens while it is focused (covers the empty-workspace start).
+local gamingWs    = "gaming"
+local gamingMfact = 0.65
+
+-- "name:" is required: a bare name only matches an existing workspace and
+-- errors otherwise; the prefix lets the first SUPER+G / SUPER+SHIFT+G create it.
+hl.bind(mainMod .. " + G",         hl.dsp.focus({ workspace = "name:" .. gamingWs }))
+hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. gamingWs, follow = false }))
+
+local function gamingMfactApply()
+    -- "exact" must precede the value: as the first token it flags absolute
+    -- mode, otherwise the value is treated as a delta (0.7 delta => clamped 0.95)
+    hl.dispatch(hl.dsp.layout("mfact exact " .. gamingMfact))
+end
+
+hl.on("workspace.active", function(ws)
+    if ws.name == gamingWs then
+        gamingMfactApply()
+    end
+end)
+
+hl.on("window.open", function()
+    if hl.get_active_workspace().name == gamingWs then
+        gamingMfactApply()
+    end
+end)
+
+-- Scratchpad: drop-down layer over the current workspace. Stashing is
+-- silent: focus stays here, so you can send several windows in a row.
 hl.bind(mainMod .. " + D",         hl.dsp.workspace.toggle_special("scratchpad"))
-hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:scratchpad" }))
+hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }))
 
 -- Mouse: SUPER+LMB move, SUPER+RMB resize, SUPER+scroll cycle workspaces
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
