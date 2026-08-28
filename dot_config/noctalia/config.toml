@@ -17,9 +17,9 @@ control_center_placement = "floating"
 control_center_position  = "center"
 
 [theme]
-mode    = "dark"
-source  = "builtin"
-builtin = "Catppuccin"
+mode              = "dark"
+source            = "community"
+community_palette = "Catppuccin Mocha Green"
 
 [bar.default]
 # Bump content size (icons, spacing, base text) to match the 1.25 compositor scale
