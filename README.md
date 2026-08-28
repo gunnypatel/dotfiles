@@ -1,10 +1,11 @@
 # dotfiles
 
 Portable, [chezmoi](https://www.chezmoi.io)-managed dotfiles. Currently manages
-**tmux**, **fish shell**, and **neovim** — built on [Oh My TMUX](https://github.com/gpakosz/.tmux),
-[TPM](https://github.com/tmux-plugins/tpm), [catppuccin](https://github.com/catppuccin/tmux)
-(mocha) theme, and [Fisher](https://github.com/jorgebucaran/fisher) plugins,
-laid out cleanly under XDG (no files in `$HOME`).
+**tmux**, **fish shell**, **neovim**, and a **Hyprland + Noctalia** desktop — built on [TPM](https://github.com/tmux-plugins/tpm),
+[catppuccin](https://github.com/catppuccin/tmux) (mocha) everywhere things can be
+themed, [Fisher](https://github.com/jorgebucaran/fisher) plugins, and
+[Noctalia](https://noctalia.dev) as the Wayland shell, laid out cleanly under
+XDG (no files in `$HOME`).
 
 ## What gets installed
 
@@ -21,6 +22,9 @@ laid out cleanly under XDG (no files in `$HOME`).
 | `~/.config/fish/functions/*.fish` | custom fish functions |
 | `~/.config/nvim/init.lua` | Neovim config (kickstart-inspired, single-file, `vim.pack`) |
 | `~/.config/nvim/nvim-pack-lock.json` | pinned plugin versions (committed after first launch) |
+| `~/.config/hypr/hyprland.lua` | Hyprland compositor config (Lua format; monitors, binds, rules) |
+| `~/.config/noctalia/config.toml` | Noctalia shell seed config (theme, idle, polkit agent) |
+| `~/.config/ghostty/config` | Ghostty terminal (catppuccin mocha, JetBrainsMono Nerd Font) |
 
 The tmux plugin install location is centralized in `tmux.conf.local` as `@plugin_dir`
 and referenced via `#{@plugin_dir}` — change it in one place to move plugins.
@@ -93,6 +97,15 @@ Key bindings (leader is `<space>`):
 | `<F10>` / `<F11>` / `<S-F11>` | Debug: step over / into / out |
 | `<leader>du` | Toggle debug UI |
 
+### Hyprland + Noctalia desktop
+
+Single-file configs, documented inline: `~/.config/hypr/hyprland.lua`
+(compositor: monitors, binds, rules, autostart) and
+`~/.config/noctalia/config.toml` (shell: theme, idle, polkit agent). Noctalia
+v5 is a native Wayland shell (not the old quickshell v4) — see
+[docs.noctalia.dev](https://docs.noctalia.dev). System packages are listed in
+*Prerequisites*, not scripted.
+
 ## Prerequisites
 
 ### System packages
@@ -120,12 +133,17 @@ package manager.
 | gcc (C compiler) | `sudo dnf install gcc` | `sudo apt install build-essential` | Xcode CLT |
 | tree-sitter | `sudo dnf install tree-sitter` | `sudo apt install tree-sitter-cli` | `brew install tree-sitter` |
 | chezmoi | see [chezmoi install](https://www.chezmoi.io/install/) | same | `brew install chezmoi` |
+| hyprland ††† | `sudo dnf install hyprland` | see [hyprland wiki](https://wiki.hypr.land/Getting-Started/Installation/) | n/a (macOS) |
+| noctalia ††† | `sudo dnf install noctalia` (Fedora 44+) | see [noctalia install docs](https://docs.noctalia.dev/noctalia/getting-started/installation/) | n/a (macOS) |
+| ghostty ††† | `sudo dnf install ghostty` | see [ghostty install docs](https://ghostty.org/docs/install) | `brew install --cask ghostty` |
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank` auto-detects the available tool, so this needs no config.
 
 ‡ Install with `cargo` after `sudo dnf/apt install cargo`. On Fedora, some of these (git-delta, eza, zoxide, lazygit) are also available via `dnf`, but `cargo` ensures the latest versions.
 
 †† The Neovim config uses `vim.pack` and the `vim.lsp.config` / `vim.lsp.enable` API, which require Neovim ≥0.12. Fedora's `dnf install neovim` is recent enough. On Ubuntu/Debian the stock package is usually too old — install via the [neovim PPA](https://launchpad.net/~neovim-ppa/+archive/ubuntu/unstable) or the [release tarball/appimage](https://github.com/neovim/neovim/releases). `make`, `unzip`, and the C compiler come from `build-essential` (Debian/Ubuntu) or `@development-tools` (Fedora); on macOS they're provided by the Xcode Command Line Tools.
+
+††† Desktop layer (Linux only). The Hyprland config uses the Lua format, which requires Hyprland ≥0.55. Noctalia v5 is packaged for Fedora 44+; on other distros see its installation docs.
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank`
 auto-detects the available tool, so this needs no config.
@@ -221,6 +239,12 @@ dotfiles/                                    # chezmoi source dir
 │   │       └── pa.fish                      # custom python activate alias
 │   └── nvim/
 │       └── init.lua                         # kickstart-inspired single-file config (vim.pack)
+│   ├── hypr/
+│   │   └── hyprland.lua                     # compositor config (monitors, binds, rules, autostart)
+│   ├── noctalia/
+│   │   └── config.toml                      # shell seed: theme, idle, polkit
+│   └── ghostty/
+│       └── config                           # terminal: theme, font, keybind
 ├── dot_local/
 │   └── bin/
 │       └── executable_tmux-sessionizer      # +x via chezmoi prefix
@@ -241,6 +265,30 @@ its base config lives at `~/.config/tmux/tmux.conf`, it resolves
 `TMUX_CONF_LOCAL` to `~/.config/tmux/tmux.conf.local` and sources it
 automatically. TPM in turn auto-detects the XDG plugin dir because the base
 config exists under `~/.config/tmux/`.
+
+## Key bindings (Hyprland)
+
+`SUPER` is the main modifier. Focus/move are vim-style, matching `Ctrl+hjkl`
+window navigation in nvim.
+
+| Key | Action |
+|-----|--------|
+| `SUPER+Enter` | ghostty |
+| `SUPER+E` | dolphin |
+| `SUPER+Space` | Noctalia launcher |
+| `SUPER+W` | close window (apps close a tab, like Ctrl+W) |
+| `SUPER+F` / `SUPER+T` | fullscreen / toggle floating |
+| `SUPER+C` | center a floating window |
+| `SUPER+H/J/K/L` | move focus (+ `SHIFT` moves the window) |
+| `SUPER+M` | promote window to the centered master area |
+| `SUPER+1..9` / `SUPER+Shift+1..9` | switch / move window to workspace |
+| `SUPER+D` / `SUPER+Shift+D` | scratchpad special workspace / send window to it |
+| `Alt+Tab` | Noctalia window switcher |
+| `SUPER+S` / `SUPER+Comma` | control center / Noctalia settings |
+| `SUPER+Escape` / `SUPER+Shift+E` | lock / session panel |
+| `SUPER+Shift+R` | reload Hyprland config |
+| `Print` | Noctalia region screenshot |
+| media/brightness keys | Noctalia OSDs |
 
 ## Key bindings (from `tmux.conf.local`)
 
@@ -291,10 +339,25 @@ chezmoi apply -v
   Mason (LSPs/formatters) run on first launch. If something didn't, open nvim and
   run `:lua vim.pack.update()` (plugins) or `:Mason` (tools), then `:checkhealth`.
 - **nvim errors about `vim.pack` or `vim.lsp.config`** — these require Neovim
-  ≥0.12. Check `nvim --version`; on Ubuntu/Debian the stock package is usually too
-  old (install via the neovim PPA or the release tarball/appimage).
+  ≥0.12. Check `nvim --version`; on Ubuntu/Debian the stock package is usually
+  too old (install via the neovim PPA or the release tarball/appimage).
+- **Noctalia config not doing what the TOML says** — the GUI's overrides live in
+  `~/.local/state/noctalia/settings.toml` and win over `~/.config/noctalia/`.
+  Inspect it, or delete it to clear all GUI-made overrides. Check syntax with
+  `noctalia config validate`.
+- **Screen never sleeps / never locks** — idle is Noctalia's job
+  (`[idle.behavior.lock]` and `[idle.behavior.screen-off]` in
+  `~/.config/noctalia/config.toml`); KDE's power management does not run inside
+  a Hyprland session.
+- **Chrome blurry or tiny compared to other apps** — make sure it runs native
+  Wayland, not XWayland: `hyprctl clients` should not show it as xwayland.
+  `ELECTRON_OZONE_PLATFORM_HINT=auto` (set in `hyprland.lua`) handles most
+  Electron/Chromium apps; worst case set a per-app zoom.
+- **Monitor changed / wrong resolution** — check `hyprctl monitors` and update
+  the `hl.monitor` block at the top of `hyprland.lua`.
 
 ## Scope
 
-Currently manages **tmux**, **fish shell**, and **neovim**. git / other shells
-can be added under the same `dot_*` layout when ready.
+Currently manages **tmux**, **fish shell**, **neovim**, and the
+**Hyprland + Noctalia desktop** (compositor, shell, and terminal configs).
+git / other shells can be added under the same `dot_*` layout when ready.

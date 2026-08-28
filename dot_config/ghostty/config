@@ -1,0 +1,8 @@
+# Ghostty — catppuccin mocha (bundled theme), JetBrainsMono Nerd Font.
+# Reload with ctrl+shift+comma. All options: ghostty.org/docs/config
+
+theme = Catppuccin Mocha
+font-family = JetBrainsMono Nerd Font
+
+window-save-state = always
+keybind = shift+enter=text:\x1b\r

@@ -48,3 +48,11 @@ submodules
 .local/share/nvim
 .local/state/nvim
 .cache/nvim
+
+# noctalia: config.toml is managed. GUI overrides live in the state dir and
+# plugins/community palettes in the data dir — Noctalia owns both at runtime.
+.local/state/noctalia
+.local/share/noctalia
+
+# ghostty: config is managed; window-save-state runtime data is not.
+.local/state/ghostty

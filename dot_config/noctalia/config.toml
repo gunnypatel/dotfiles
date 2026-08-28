@@ -1,0 +1,23 @@
+# Noctalia shell — hand-written seed config (hot-reloaded on save).
+# GUI changes land in ~/.local/state/noctalia/settings.toml and override this
+# file; this file is never rewritten. Validate: `noctalia config validate`.
+
+[shell]
+font_family  = "JetBrainsMono Nerd Font"
+polkit_agent = true
+
+[theme]
+mode    = "dark"
+source  = "builtin"
+builtin = "Catppuccin"
+
+# Lock after 10 min idle, blank the screen at 11 min (wakes on activity).
+[idle.behavior.lock]
+timeout = 600
+action  = "lock"
+enabled = true
+
+[idle.behavior.screen-off]
+timeout = 660
+action  = "screen_off"
+enabled = true
