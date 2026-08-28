@@ -54,7 +54,7 @@ memory_poll_seconds  = 5
 network_poll_seconds = 10
 
 [wallpaper.default]
-path = "/usr/share/noctalia/assets/noctalia-wallpaper.png"
+path = "color:#000000"
 
 # Lock after 10 min idle, blank the screen at 11 min (wakes on activity).
 [idle.behavior.lock]

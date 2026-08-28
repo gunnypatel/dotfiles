@@ -79,6 +79,16 @@ hl.config({
 })
 
 ------------------
+-- ANIMATIONS
+------------------
+
+-- Workspace switches cross-fade linearly over 1s: constant-opacity fade so
+-- the transition stays predictable (no ease-in/out).
+hl.curve("linear", { type = "bezier", points = { {0, 0}, {1, 1} } })
+hl.animation({ leaf = "workspacesIn",  enabled = true, speed = 4, bezier = "linear", style = "fade" })
+hl.animation({ leaf = "workspacesOut", enabled = true, speed = 4, bezier = "linear", style = "fade" })
+
+------------------
 -- KEYBINDINGS
 ------------------
 
