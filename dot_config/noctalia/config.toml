@@ -11,6 +11,18 @@ mode    = "dark"
 source  = "builtin"
 builtin = "Catppuccin"
 
+[bar.default]
+# Bump content size (icons, spacing, base text) to match the 1.25 compositor scale
+scale = 1.25
+
+[bar.default.monitor.odyssey]
+# Half-width centered bar, only on the 57" ultrawide: 6144 logical px wide
+# (7680 @ 1.25), so 1536 px margins each side leave 3072 px (50%). Matched
+# by monitor description, so it follows this panel to any port. All other
+# monitors get the default bar (margin_ends = 100).
+match       = "Odyssey G95NC"
+margin_ends = 1536
+
 # Lock after 10 min idle, blank the screen at 11 min (wakes on activity).
 [idle.behavior.lock]
 timeout = 600
