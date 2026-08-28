@@ -133,8 +133,8 @@ package manager.
 | gcc (C compiler) | `sudo dnf install gcc` | `sudo apt install build-essential` | Xcode CLT |
 | tree-sitter | `sudo dnf install tree-sitter` | `sudo apt install tree-sitter-cli` | `brew install tree-sitter` |
 | chezmoi | see [chezmoi install](https://www.chezmoi.io/install/) | same | `brew install chezmoi` |
-| hyprland ††† | `sudo dnf install hyprland` | see [hyprland wiki](https://wiki.hypr.land/Getting-Started/Installation/) | n/a (macOS) |
-| noctalia ††† | `sudo dnf install noctalia` (Fedora 44+) | see [noctalia install docs](https://docs.noctalia.dev/noctalia/getting-started/installation/) | n/a (macOS) |
+| hyprland stack ††† | `sudo dnf copr enable lionheartp/Hyprland && sudo dnf install hyprland xdg-desktop-portal-hyprland` | see [hyprland wiki](https://wiki.hypr.land/Getting-Started/Installation/) | n/a (macOS) |
+| noctalia ††† | `sudo dnf install noctalia` (Fedora 44+; also `noctalia-git` from the same copr) | see [noctalia install docs](https://docs.noctalia.dev/noctalia/getting-started/installation/) | n/a (macOS) |
 | ghostty ††† | `sudo dnf install ghostty` | see [ghostty install docs](https://ghostty.org/docs/install) | `brew install --cask ghostty` |
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank` auto-detects the available tool, so this needs no config.
@@ -143,7 +143,13 @@ package manager.
 
 †† The Neovim config uses `vim.pack` and the `vim.lsp.config` / `vim.lsp.enable` API, which require Neovim ≥0.12. Fedora's `dnf install neovim` is recent enough. On Ubuntu/Debian the stock package is usually too old — install via the [neovim PPA](https://launchpad.net/~neovim-ppa/+archive/ubuntu/unstable) or the [release tarball/appimage](https://github.com/neovim/neovim/releases). `make`, `unzip`, and the C compiler come from `build-essential` (Debian/Ubuntu) or `@development-tools` (Fedora); on macOS they're provided by the Xcode Command Line Tools.
 
-††† Desktop layer (Linux only). The Hyprland config uses the Lua format, which requires Hyprland ≥0.55. Noctalia v5 is packaged for Fedora 44+; on other distros see its installation docs.
+††† Desktop layer (Linux only). Hyprland and `xdg-desktop-portal-hyprland`
+(the screen-sharing portal) come from the
+[lionheartp/Hyprland](https://copr.fedorainfracloud.org/coprs/lionheartp/Hyprland/)
+copr that Noctalia's docs recommend; it also carries `noctalia-git` snapshots,
+while the stable `noctalia` package is in Fedora 44+ official repos. The
+Noctalia shell replaces the usual hyprpaper / hypridle / hyprpolkitagent /
+launcher stack — none of those are needed.
 
 † `wl-clipboard` for Wayland sessions; use `xclip` on X11. `tmux-yank`
 auto-detects the available tool, so this needs no config.
