@@ -39,6 +39,11 @@ end)
 
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
+-- KDE/Qt apps (dolphin): outside Plasma, Qt can't tell it should load the
+-- kde platform theme (plasma-integration), which applies the Breeze Dark
+-- palette/icons/fonts from ~/.config/kdeglobals. Without this, dolphin
+-- falls back to the default light Qt palette.
+hl.env("QT_QPA_PLATFORMTHEME", "kde")
 -- Chrome/Electron as native Wayland clients: crisp at scale 1.25, no XWayland
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 
