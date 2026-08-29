@@ -1,0 +1,33 @@
+#!/bin/sh
+# Rename the active Hyprland workspace. Bound to SUPER+COMMA (mirrors tmux's
+# prefix+, for windows). "gaming" is refused: the persistent rule and the
+# gamingWindows routing in hyprland.lua match that workspace by name.
+set -eu
+
+ws_json=$(hyprctl -j activeworkspace)
+ws_id=$(printf '%s' "$ws_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+ws_name=$(printf '%s' "$ws_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')
+
+if [ "$ws_name" = "gaming" ]; then
+    zenity --error --title 'Rename workspace' \
+        --text '"gaming" is matched by name in hyprland.lua (persistent rule + gaming window routing). Renaming it would break both.' \
+        2>/dev/null || true
+    exit 0
+fi
+
+name=$(zenity --entry --title 'Rename workspace' \
+    --text "New name for workspace \"${ws_name}\":" \
+    --entry-text "$ws_name" 2>/dev/null) || exit 0
+[ -n "$name" ] || exit 0
+
+# ' and \ would break out of the Lua string in the dispatch below
+case "$name" in
+    *\'* | *\\* )
+        zenity --error --title 'Rename workspace' \
+            --text 'Single quotes and backslashes are not allowed in names.' \
+            2>/dev/null || true
+        exit 0
+        ;;
+esac
+
+hyprctl dispatch "hl.dsp.workspace.rename({ workspace = $ws_id, name = '$name' })"

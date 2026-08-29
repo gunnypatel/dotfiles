@@ -196,7 +196,9 @@ hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
 -- Noctalia shell surfaces and session
 hl.bind("ALT + TAB",               hl.dsp.exec_cmd(ipc .. "window-switcher"))
 hl.bind(mainMod .. " + S",         hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"))
-hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd(ipc .. "settings-toggle"))
+-- COMMA renames the workspace (tmux prefix+, parity); settings moved to PERIOD
+hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"))
+hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"))
 hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(ipc .. "session lock"))
 hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(ipc .. "panel-toggle session"))
 hl.bind("PRINT",                   hl.dsp.exec_cmd(ipc .. "screenshot-region"))
