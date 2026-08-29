@@ -1,0 +1,22 @@
+#!/bin/sh
+# Switch the tiling layout (master <-> dwindle) from a picker menu. Applies to
+# every workspace without its own layout rule. Uses `hyprctl eval`: `hyprctl
+# keyword` is disabled for Lua configs. Session-scoped — hyprland.lua's master
+# default returns on restart, and per-workspace mfact tweaks reset when
+# switching back to master (the gaming workspace re-applies its own).
+set -eu
+
+current=$(hyprctl -j getoption general:layout \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["str"])')
+
+choice=$(zenity --list --title 'Layout' --hide-header \
+    --text "Current layout: ${current}  (all workspaces)" \
+    --column Layout --column Description \
+    master  'centered window, slaves left + right (default)' \
+    dwindle 'terminal-style splits that follow the focus' \
+    2>/dev/null) || exit 0
+
+if [ -n "$choice" ] && [ "$choice" != "$current" ]; then
+    hyprctl eval "hl.config({ general = { layout = \"$choice\" } })"
+    noctalia msg notification-show 'Layout' "$choice"
+fi

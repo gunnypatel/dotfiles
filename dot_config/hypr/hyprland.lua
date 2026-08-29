@@ -66,6 +66,10 @@ hl.config({
         -- center the master even with 0-1 side windows (default needs 2
         -- slaves and otherwise falls back to a left split)
         slave_count_for_center_master = 0,
+        -- extra masters: let addmaster pull a window into the center column
+        -- even when few windows are open (default refuses if it would leave
+        -- fewer than 2 slaves)
+        allow_small_split = true,
     },
     decoration = {
         rounding       = 20,
@@ -118,6 +122,12 @@ hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
 hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + C", hl.dsp.window.center())               -- center a floating window
 hl.bind(mainMod .. " + M", hl.dsp.layout("swapwithmaster"))      -- promote focused window to center
+
+-- Master splits: SUPER+SHIFT+M pulls the focused window into the center
+-- column (extra masters stack above/below; SUPER+RMB resizes their shares),
+-- SUPER+CTRL+M drops it back to the sides.
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.layout("addmaster"))
+hl.bind(mainMod .. " + CTRL + M",  hl.dsp.layout("removemaster"))
 
 -- Master width: SUPER+[ / SUPER+] adjusts the master's share by 5%.
 -- Per-workspace: each workspace keeps its own ratio for its lifetime.

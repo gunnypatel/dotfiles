@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hyprland Switch Layout
+Comment=Switch the Hyprland tiling layout (master / dwindle)
+Exec=/home/gunny/.local/bin/hyprland-switch-layout-menu
+Icon=preferences-system
+Categories=Utility;
+NoDisplay=false
