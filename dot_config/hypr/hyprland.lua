@@ -5,9 +5,11 @@
 -- MONITORS
 ------------------
 
--- Samsung Odyssey G95NC 57" 7680x2160@120 (verify names: `hyprctl monitors`)
+-- Samsung Odyssey G95NC 57" 7680x2160@120 (verify: `hyprctl monitors`).
+-- Matched by description, not connector: the DP port re-enumerated once
+-- (DP-5 -> DP-4), which silently dropped this rule and reset scale to 1.
 hl.monitor({
-    output   = "DP-5",
+    output   = "desc:Samsung Electric Company Odyssey G95NC",
     mode     = "7680x2160@120",
     position = "0x0",
     scale    = 1.25,
@@ -76,6 +78,12 @@ hl.config({
             vibrancy = 0.1696,
         },
     },
+    xwayland = {
+        -- XWayland (Steam, Wine/Proton games) renders at native 7680x2160
+        -- instead of a logical buffer upscaled 1.25x (blur). Apps must then
+        -- scale themselves: Steam via -forcedesktopscaling 1.25.
+        force_zero_scaling = true,
+    },
 })
 
 ------------------
@@ -126,16 +134,31 @@ for i = 1, 9 do
 end
 
 -- Gaming workspace: a named workspace outside the 1-9 strip, summoned with
--- SUPER+G. Workspace rules can only pin orientation (not master width), so
--- the 70% master is re-applied whenever the workspace gains focus or a
--- window opens while it is focused (covers the empty-workspace start).
+-- SUPER+G. Windows listed in gamingWindows always open here: related apps
+-- arrive silently, games (master = true) take the view with them. Promote
+-- the game to the center tile with SUPER+M. (An automatic master claim needs
+-- window.open/title events, which Hyprland 0.56.2 never emits for XWayland
+-- windows — revisit on a newer Hyprland.)
 local gamingWs    = "gaming"
 local gamingMfact = 0.65
+
+-- One line per window; no logic changes needed to extend. class/title are
+-- regexes matched against the window's initialClass/initialTitle (RE2)
+local gamingWindows = {
+    { class = "^steam$" },                            -- storefront
+    { class = "^steam_app_[0-9]+$" },                 -- shortcut launchers (Battle.net)
+    { class = "^steam_app_[0-9]+$", title = "^World of Warcraft", master = true },
+}
 
 -- "name:" is required: a bare name only matches an existing workspace and
 -- errors otherwise; the prefix lets the first SUPER+G / SUPER+SHIFT+G create it.
 hl.bind(mainMod .. " + G",         hl.dsp.focus({ workspace = "name:" .. gamingWs }))
 hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. gamingWs, follow = false }))
+
+-- Keep the gaming workspace alive even when empty and unfocused: without
+-- this, Hyprland destroys it when its last window closes (e.g. Steam
+-- restart), and the routing rules above then silently miss their target.
+hl.workspace_rule({ workspace = "name:" .. gamingWs, persistent = true })
 
 local function gamingMfactApply()
     -- "exact" must precede the value: as the first token it flags absolute
@@ -143,14 +166,18 @@ local function gamingMfactApply()
     hl.dispatch(hl.dsp.layout("mfact exact " .. gamingMfact))
 end
 
+for i, entry in ipairs(gamingWindows) do
+    hl.window_rule({
+        name  = "gaming-ws-" .. i,
+        match = { class = entry.class, title = entry.title },
+        -- same-effect rules: last match wins, so a game's non-silent
+        -- workspace (listed after the launcher catch-all) takes precedence
+        workspace = entry.master and gamingWs or (gamingWs .. " silent"),
+    })
+end
+
 hl.on("workspace.active", function(ws)
     if ws.name == gamingWs then
-        gamingMfactApply()
-    end
-end)
-
-hl.on("window.open", function()
-    if hl.get_active_workspace().name == gamingWs then
         gamingMfactApply()
     end
 end)
