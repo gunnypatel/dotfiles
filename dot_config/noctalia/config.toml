@@ -39,6 +39,12 @@ end = [
 match       = "Odyssey G95NC"
 margin_ends = 1536
 
+[widget.workspaces]
+# Show names (SUPER+COMMA renames; unnamed workspaces fall back to their
+# number). Default max_label_chars is 1, which truncates names to a char.
+label_source    = "name"
+max_label_chars = 15
+
 [control_center]
 sidebar         = "full"
 sidebar_section = "full"
