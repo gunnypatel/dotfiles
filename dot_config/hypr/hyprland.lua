@@ -254,6 +254,15 @@ hl.window_rule({
     size  = { 1080, 920 },
 })
 
+-- zenity dialogs (layout menu, workspace rename) float dead-center instead
+-- of tiling into the layout
+hl.window_rule({
+    name    = "zenity-float-center",
+    match   = { class = "^zenity$" },
+    float   = true,
+    center  = true,
+})
+
 -- Apps requesting maximize get suppressed: keep windows off the full 32:9
 hl.window_rule({
     name  = "suppress-maximize",

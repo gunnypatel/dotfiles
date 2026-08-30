@@ -4,12 +4,29 @@
 # keyword` is disabled for Lua configs. Session-scoped — hyprland.lua's master
 # default returns on restart, and per-workspace mfact tweaks reset when
 # switching back to master (the gaming workspace re-applies its own).
+#
+# Oversized dialog (640x420) with downscaled content: GTK4 ignores
+# GDK_DPI_SCALE and there is no settings portal on this box, so text scale
+# comes from a per-process XDG_CONFIG_HOME whose gtk-4.0/settings.ini is the
+# live one with a smaller gtk-font-name (buttons/padding follow font metrics).
 set -eu
+
+gtk_home=$(mktemp -d)
+trap 'rm -rf "$gtk_home"' EXIT
+mkdir -p "$gtk_home/gtk-4.0"
+if [ -f "$HOME/.config/gtk-4.0/settings.ini" ]; then
+    sed 's/^gtk-font-name=.*/gtk-font-name=Noto Sans,  8/' \
+        "$HOME/.config/gtk-4.0/settings.ini" > "$gtk_home/gtk-4.0/settings.ini"
+else
+    printf '[Settings]\ngtk-application-prefer-dark-theme=true\ngtk-font-name=Noto Sans,  8\n' \
+        > "$gtk_home/gtk-4.0/settings.ini"
+fi
 
 current=$(hyprctl -j getoption general:layout \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["str"])')
 
-choice=$(zenity --list --title 'Layout' --hide-header \
+choice=$(XDG_CONFIG_HOME="$gtk_home" zenity --list --title 'Layout' --hide-header \
+    --width 640 --height 420 \
     --text "Current layout: ${current}  (all workspaces)" \
     --column Layout --column Description \
     master  'centered window, slaves left + right (default)' \

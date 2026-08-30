@@ -1,0 +1,19 @@
+#!/bin/sh
+# Toggle the tiling layout between master and dwindle, for every workspace
+# without its own layout rule. Uses `hyprctl eval`: `hyprctl keyword` is
+# disabled for Lua configs. Session-scoped — hyprland.lua's master default
+# returns on restart, and per-workspace mfact tweaks reset when switching
+# back to master (the gaming workspace re-applies its own).
+set -eu
+
+current=$(hyprctl -j getoption general:layout \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["str"])')
+
+if [ "$current" = "master" ]; then
+    target=dwindle
+else
+    target=master
+fi
+
+hyprctl eval "hl.config({ general = { layout = \"$target\" } })"
+noctalia msg notification-show 'Layout' "$target"

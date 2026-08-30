@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hyprland Toggle Layout
+Comment=Toggle the Hyprland tiling layout between master and dwindle
+Exec=/home/gunny/.local/bin/hyprland-toggle-layout
+Icon=preferences-system
+Categories=Utility;
+NoDisplay=false
