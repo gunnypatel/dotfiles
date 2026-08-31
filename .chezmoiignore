@@ -4,6 +4,7 @@
 # Documentation and macOS deps catalog (accessed via `chezmoi cd`, not applied)
 README.md
 Brewfile
+docs
 
 # Vendored Oh My TMUX base — used as the symlink target by
 # dot_config/tmux/symlink_tmux.conf.tmpl, not installed directly.
