@@ -191,9 +191,14 @@ for i, entry in ipairs(gamingWindows) do
     })
 end
 
+-- Apply the wider gaming mfact once per session: re-applying on every
+-- activation would silently revert manual SUPER+[ / SUPER+] tweaks each
+-- time the workspace is re-entered.
+local gamingMfactSet = false
 hl.on("workspace.active", function(ws)
-    if ws.name == gamingWs then
+    if ws.name == gamingWs and not gamingMfactSet then
         gamingMfactApply()
+        gamingMfactSet = true
     end
 end)
 
