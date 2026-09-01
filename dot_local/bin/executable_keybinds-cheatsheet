@@ -353,6 +353,58 @@ collect_tmux() {
   ' | awk -F'\t' '!seen[$0]++'
 }
 
+ghostty_trigger_text() {
+  local part out=()
+  local IFS='+'
+  read -ra parts <<<"$1"
+  for part in "${parts[@]}"; do
+    out+=("${part^^}")
+  done
+  local IFS=' '
+  echo "${out[*]}"
+}
+
+ghostty_action_text() {
+  local action="${1%%:*}"
+  local params="${1#*:}"
+  [[ $params == "$1" ]] && params=""
+
+  case "$action" in
+    copy_to_clipboard)      echo "Copy to clipboard" ;;
+    paste_from_clipboard)   echo "Paste from clipboard" ;;
+    paste_from_selection)   echo "Paste from selection" ;;
+    increase_font_size)     echo "Increase font size" ;;
+    decrease_font_size)     echo "Decrease font size" ;;
+    reset_font_size)        echo "Reset font size" ;;
+    goto_tab)               echo "Go to tab $params" ;;
+    last_tab)               echo "Last tab" ;;
+    next_tab)               echo "Next tab" ;;
+    previous_tab)           echo "Previous tab" ;;
+    new_tab)                echo "New tab" ;;
+    close_tab)              echo "Close tab" ;;
+    toggle_fullscreen)      echo "Toggle fullscreen" ;;
+    toggle_split_zoom)      echo "Toggle split zoom" ;;
+    toggle_command_palette) echo "Command palette" ;;
+    reload_config)          echo "Reload config" ;;
+    open_config)            echo "Open config" ;;
+    write_screen_file)      echo "Save screen to file" ;;
+    text)                   echo "Send text escape" ;;
+    *)                      echo "$action" | sed -E 's/_/ /g; s/\b(.)/\U\1/g' ;;
+  esac
+}
+
+collect_ghostty() {
+  command -v ghostty >/dev/null 2>&1 || return 0
+
+  local trigger action
+  ghostty +list-keybinds 2>/dev/null | sed 's/^keybind = //' |
+    while IFS='=' read -r trigger action; do
+      # ghostty lists both alt+digit_N and alt+N aliases; keep one
+      [[ $trigger == *digit_* ]] && continue
+      printf 'ghostty\t%s\t%s\n' "$(ghostty_trigger_text "$trigger")" "$(ghostty_action_text "$action")"
+    done
+}
+
 # --- COLLECTORS: (tmux, ghostty, nvim collectors are added above this line
 # --- in later commits; collect() skips anything not yet defined) ---------
 
