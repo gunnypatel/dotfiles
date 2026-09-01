@@ -113,39 +113,42 @@ local mainMod = "SUPER"
 
 -- Launch
 hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal), { description = "Terminal" })
-hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
-hl.bind(mainMod .. " + SPACE",  hl.dsp.exec_cmd(ipc .. "panel-toggle launcher"))
+hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager), { description = "File manager" })
+hl.bind(mainMod .. " + SPACE",  hl.dsp.exec_cmd(ipc .. "panel-toggle launcher"), { description = "Noctalia launcher" })
+
+-- Cheatsheet: this very keybind list (SUPER+/ reads as "where are my keys?")
+hl.bind(mainMod .. " + SLASH",  hl.dsp.exec_cmd("keybinds-cheatsheet"), { description = "Keyboard cheatsheet" })
 
 -- Window ops (SUPER+W mirrors Ctrl+W: apps close a tab, or the window)
-hl.bind(mainMod .. " + W", hl.dsp.window.close())
-hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
-hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + C", hl.dsp.window.center())               -- center a floating window
-hl.bind(mainMod .. " + M", hl.dsp.layout("swapwithmaster"))      -- promote focused window to center
+hl.bind(mainMod .. " + W", hl.dsp.window.close(), { description = "Close window" })
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen(), { description = "Toggle fullscreen" })
+hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating" })
+hl.bind(mainMod .. " + C", hl.dsp.window.center(), { description = "Center floating window" })  -- center a floating window
+hl.bind(mainMod .. " + M", hl.dsp.layout("swapwithmaster"), { description = "Promote window to center" })  -- promote focused window to center
 
 -- Master splits: SUPER+SHIFT+M pulls the focused window into the center
 -- column (extra masters stack above/below; SUPER+RMB resizes their shares),
 -- SUPER+CTRL+M drops it back to the sides.
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.layout("addmaster"))
-hl.bind(mainMod .. " + CTRL + M",  hl.dsp.layout("removemaster"))
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.layout("addmaster"), { description = "Add master (pull to center)" })
+hl.bind(mainMod .. " + CTRL + M",  hl.dsp.layout("removemaster"), { description = "Remove master (push to sides)" })
 
 -- Master width: SUPER+[ / SUPER+] adjusts the master's share by 5%.
 -- Per-workspace: each workspace keeps its own ratio for its lifetime.
-hl.bind(mainMod .. " + bracketleft",  hl.dsp.layout("mfact -0.05"))
-hl.bind(mainMod .. " + bracketright", hl.dsp.layout("mfact 0.05"))
+hl.bind(mainMod .. " + bracketleft",  hl.dsp.layout("mfact -0.05"), { description = "Master narrower" })
+hl.bind(mainMod .. " + bracketright", hl.dsp.layout("mfact 0.05"), { description = "Master wider" })
 
 -- Focus / move, vim-style (matches Ctrl+hjkl window nav in nvim)
 for key, dir in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
-    hl.bind(mainMod .. " + " .. key:upper(),         hl.dsp.focus({ direction = dir }))
-    hl.bind(mainMod .. " + SHIFT + " .. key:upper(), hl.dsp.window.move({ direction = dir }))
+    hl.bind(mainMod .. " + " .. key:upper(),         hl.dsp.focus({ direction = dir }), { description = "Focus window " .. dir })
+    hl.bind(mainMod .. " + SHIFT + " .. key:upper(), hl.dsp.window.move({ direction = dir }), { description = "Move window " .. dir })
 end
 
 -- Workspaces 1-9; SUPER+SHIFT+N moves the window there (focus follows),
 -- SUPER+CTRL+N parks it there silently (stays on the current workspace)
 for i = 1, 9 do
-    hl.bind(mainMod .. " + " .. i,         hl.dsp.focus({ workspace = i }))
-    hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
-    hl.bind(mainMod .. " + CTRL + " .. i,  hl.dsp.window.move({ workspace = i, follow = false }))
+    hl.bind(mainMod .. " + " .. i,         hl.dsp.focus({ workspace = i }), { description = "Workspace " .. i })
+    hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }), { description = "Move window to workspace " .. i })
+    hl.bind(mainMod .. " + CTRL + " .. i,  hl.dsp.window.move({ workspace = i, follow = false }), { description = "Park window on workspace " .. i })
 end
 
 -- Gaming workspace: a named workspace outside the 1-9 strip, summoned with
@@ -167,8 +170,8 @@ local gamingWindows = {
 
 -- "name:" is required: a bare name only matches an existing workspace and
 -- errors otherwise; the prefix lets the first SUPER+G / SUPER+SHIFT+G create it.
-hl.bind(mainMod .. " + G",         hl.dsp.focus({ workspace = "name:" .. gamingWs }))
-hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. gamingWs, follow = false }))
+hl.bind(mainMod .. " + G",         hl.dsp.focus({ workspace = "name:" .. gamingWs }), { description = "Gaming workspace" })
+hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. gamingWs, follow = false }), { description = "Park window on gaming workspace" })
 
 -- Keep the gaming workspace alive even when empty and unfocused: without
 -- this, Hyprland destroys it when its last window closes (e.g. Steam
@@ -204,38 +207,38 @@ end)
 
 -- Scratchpad: drop-down layer over the current workspace. Stashing is
 -- silent: focus stays here, so you can send several windows in a row.
-hl.bind(mainMod .. " + D",         hl.dsp.workspace.toggle_special("scratchpad"))
-hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }))
+hl.bind(mainMod .. " + D",         hl.dsp.workspace.toggle_special("scratchpad"), { description = "Toggle scratchpad" })
+hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }), { description = "Stash window to scratchpad" })
 
 -- Mouse: SUPER+LMB move, SUPER+RMB resize, SUPER+scroll cycle workspaces
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true, description = "Drag window" })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "Next workspace" })
+hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }), { description = "Previous workspace" })
 
 -- Noctalia shell surfaces and session
-hl.bind("ALT + TAB",               hl.dsp.exec_cmd(ipc .. "window-switcher"))
-hl.bind(mainMod .. " + S",         hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"))
+hl.bind("ALT + TAB",               hl.dsp.exec_cmd(ipc .. "window-switcher"), { description = "Window switcher" })
+hl.bind(mainMod .. " + S",         hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"), { description = "Control center" })
 -- COMMA renames the workspace (tmux prefix+, parity); settings moved to PERIOD
-hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"))
-hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"))
-hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(ipc .. "session lock"))
-hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(ipc .. "panel-toggle session"))
-hl.bind("PRINT",                   hl.dsp.exec_cmd(ipc .. "screenshot-region"))
+hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"), { description = "Noctalia settings" })
+hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"), { description = "Rename workspace" })
+hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(ipc .. "session lock"), { description = "Lock session" })
+hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(ipc .. "panel-toggle session"), { description = "Session menu" })
+hl.bind("PRINT",                   hl.dsp.exec_cmd(ipc .. "screenshot-region"), { description = "Screenshot region" })
 
 -- Reload (no Lua reload dispatcher yet; hyprctl works from any bind)
-hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"))
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"), { description = "Reload Hyprland config" })
 
 -- Hardware/media keys -> Noctalia OSDs
-hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd(ipc .. "volume-up"),     { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd(ipc .. "volume-down"),   { locked = true, repeating = true })
-hl.bind("XF86AudioMute",         hl.dsp.exec_cmd(ipc .. "volume-mute"),   { locked = true })
-hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd(ipc .. "brightness-up"),   { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(ipc .. "brightness-down"), { locked = true, repeating = true })
-hl.bind("XF86AudioNext",         hl.dsp.exec_cmd(ipc .. "media next"),    { locked = true })
-hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd(ipc .. "media previous"), { locked = true })
-hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd(ipc .. "media toggle"),  { locked = true })
-hl.bind("XF86AudioPause",        hl.dsp.exec_cmd(ipc .. "media toggle"),  { locked = true })
+hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd(ipc .. "volume-up"),     { locked = true, repeating = true, description = "Volume up" })
+hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd(ipc .. "volume-down"),   { locked = true, repeating = true, description = "Volume down" })
+hl.bind("XF86AudioMute",         hl.dsp.exec_cmd(ipc .. "volume-mute"),   { locked = true, description = "Mute volume" })
+hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd(ipc .. "brightness-up"),   { locked = true, repeating = true, description = "Brightness up" })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(ipc .. "brightness-down"), { locked = true, repeating = true, description = "Brightness down" })
+hl.bind("XF86AudioNext",         hl.dsp.exec_cmd(ipc .. "media next"),    { locked = true, description = "Next track" })
+hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd(ipc .. "media previous"), { locked = true, description = "Previous track" })
+hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd(ipc .. "media toggle"),  { locked = true, description = "Play/pause" })
+hl.bind("XF86AudioPause",        hl.dsp.exec_cmd(ipc .. "media toggle"),  { locked = true, description = "Play/pause" })
 
 ------------------
 -- RULES
