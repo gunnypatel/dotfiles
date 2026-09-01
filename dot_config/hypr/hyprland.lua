@@ -112,7 +112,7 @@ hl.animation({ leaf = "workspacesOut", enabled = true, speed = 4, bezier = "line
 local mainMod = "SUPER"
 
 -- Launch
-hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal))
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal), { description = "Terminal" })
 hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SPACE",  hl.dsp.exec_cmd(ipc .. "panel-toggle launcher"))
 
