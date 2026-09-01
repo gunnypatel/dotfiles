@@ -1,0 +1,349 @@
+#!/usr/bin/env bash
+# keybinds-cheatsheet: fuzzy-searchable cheatsheet of keybindings across
+# Hyprland, tmux, Ghostty and Neovim, shown in a fuzzel --dmenu popup.
+# Picking a Hyprland row dispatches that bind. Records are collected live
+# and cached; the cache invalidates when any tracked config (or the live
+# hyprctl binds table, or this script itself) changes.
+#
+# Usage:
+#   keybinds-cheatsheet               # open the fuzzel menu
+#   keybinds-cheatsheet --print       # dump all formatted rows (debug/tests)
+#   keybinds-cheatsheet --print tmux  # dump one tool: hypr|tmux|ghostty|nvim
+#   keybinds-cheatsheet --refresh     # ignore the cache for this run
+#   keybinds-cheatsheet --select ROW  # pretend ROW was picked (test hook)
+set -euo pipefail
+
+HYPR_CONFIG="$HOME/.config/hypr/hyprland.lua"
+TMUX_CONFIG="$HOME/.config/tmux/tmux.conf"
+GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
+NVIM_CONFIG="$HOME/.config/nvim/init.lua"
+NVIM_LOCK="$HOME/.config/nvim/nvim-pack-lock.json"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/keybinds-cheatsheet"
+TOOL_ORDER="hypr tmux ghostty nvim"
+
+print_only=""
+refresh=false
+selection=""
+
+usage() {
+  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while (($#)); do
+  case "$1" in
+    --print|-p)
+      print_only=all
+      if [[ ${2:-} != "" && ${2:-} != -* ]]; then print_only="$2"; shift; fi
+      ;;
+    --refresh|-r) refresh=true ;;
+    --select|-s)  selection="${2:?--select requires a row argument}"; shift ;;
+    -h|--help)    usage; exit 0 ;;
+    *) echo "unknown argument: $1 (see --help)" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+# ---------------------------------------------------------------------------
+# Hyprland: display helpers
+# ---------------------------------------------------------------------------
+
+modmask_to_text() {
+  case "$1" in
+    0)  printf '' ;;
+    1)  printf 'SHIFT' ;;
+    4)  printf 'CTRL' ;;
+    5)  printf 'SHIFT CTRL' ;;
+    8)  printf 'ALT' ;;
+    9)  printf 'SHIFT ALT' ;;
+    12) printf 'CTRL ALT' ;;
+    13) printf 'SHIFT CTRL ALT' ;;
+    64) printf 'SUPER' ;;
+    65) printf 'SUPER SHIFT' ;;
+    68) printf 'SUPER CTRL' ;;
+    69) printf 'SUPER SHIFT CTRL' ;;
+    72) printf 'SUPER ALT' ;;
+    73) printf 'SUPER SHIFT ALT' ;;
+    76) printf 'SUPER CTRL ALT' ;;
+    77) printf 'SUPER SHIFT CTRL ALT' ;;
+    *)  printf '%s' "$1" ;;
+  esac
+}
+
+display_key() {
+  local k="${1,,}"
+  case "$k" in
+    mouse:272)   echo "MOUSE LEFT" ;;
+    mouse:273)   echo "MOUSE RIGHT" ;;
+    mouse_down)  echo "SCROLL DOWN" ;;
+    mouse_up)    echo "SCROLL UP" ;;
+    comma)       echo "COMMA" ;;
+    period)      echo "PERIOD" ;;
+    slash)       echo "SLASH" ;;
+    minus)       echo "MINUS" ;;
+    equal)       echo "EQUAL" ;;
+    grave)       echo "~" ;;
+    bracketleft) echo "[" ;;
+    bracketright) echo "]" ;;
+    escape)      echo "ESC" ;;
+    space)       echo "SPACE" ;;
+    *)           echo "${1^^}" ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Hyprland: source scan via nvim -l (nvim embeds Lua and -l skips user
+# config, so the stubbed hl.* API below is the ONLY thing the config sees).
+# Same approach as omarchy-menu-keybindings. Emits TSV per described bind:
+#   modmask <TAB> description <TAB> key <TAB> kind <TAB> arg
+# kind is "exec" (arg = shell command) or "lua" (arg = dispatch expression).
+# ---------------------------------------------------------------------------
+
+scan_hypr() {
+  local scanner
+  scanner=$(mktemp /tmp/keybinds-scan.XXXXXX.lua)
+
+  cat >"$scanner" <<'LUA'
+local modifiers = { SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8, SUPER = 64 }
+
+local function split_keys(keys)
+  local modmask, key = 0, ""
+  for part in string.gmatch(tostring(keys or ""), "[^+]+") do
+    part = part:gsub("^%s+", ""):gsub("%s+$", "")
+    local m = modifiers[string.upper(part)]
+    if m then modmask = modmask + m else key = part end
+  end
+  return modmask, key
+end
+
+local function lua_literal(value)
+  local t = type(value)
+  if t == "string" then return string.format("%q", value) end
+  if t == "number" or t == "boolean" then return tostring(value) end
+  if t == "table" then
+    local parts = {}
+    for i = 1, #value do parts[#parts + 1] = lua_literal(value[i]) end
+    local keys = {}
+    for k in pairs(value) do
+      if not (type(k) == "number" and k >= 1 and k <= #value and math.floor(k) == k) then
+        keys[#keys + 1] = k
+      end
+    end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    for _, k in ipairs(keys) do
+      parts[#parts + 1] = "[" .. lua_literal(k) .. "] = " .. lua_literal(value[k])
+    end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+  end
+  return "nil"
+end
+
+local function call_expression(path, ...)
+  local args = {}
+  for i = 1, select("#", ...) do args[i] = lua_literal(select(i, ...)) end
+  return path .. "(" .. table.concat(args, ", ") .. ")"
+end
+
+local function dispatcher(kind, arg, expr)
+  return { __omarchy_dispatcher = true, kind = kind or "", arg = arg or "", expr = expr or "" }
+end
+
+local function dsp_proxy(path)
+  return setmetatable({ path = path }, {
+    __index = function(self, key) return dsp_proxy(self.path .. "." .. tostring(key)) end,
+    __call = function(self, ...)
+      local first = ...
+      local expr = call_expression(self.path, ...)
+      if self.path == "hl.dsp.exec_cmd" and type(first) == "string" then
+        return dispatcher("exec", first, expr)
+      end
+      return dispatcher("lua", expr, expr)
+    end,
+  })
+end
+
+local noop
+noop = setmetatable({}, { __index = function() return noop end, __call = function() return noop end })
+
+hl = setmetatable({
+  dsp = dsp_proxy("hl.dsp"),
+  bind = function(keys, d, opts)
+    opts = opts or {}
+    if opts.description and opts.description ~= "" then
+      local modmask, key = split_keys(keys)
+      local kind, arg = "", ""
+      if type(d) == "table" and d.__omarchy_dispatcher then
+        kind, arg = d.kind, (d.arg or "")
+      elseif type(d) == "string" and d ~= "" then
+        kind, arg = "exec", d
+      end
+      print(table.concat({ tostring(modmask), opts.description, key, kind, arg }, "\t"))
+    end
+    return noop
+  end,
+}, { __index = function() return noop end })
+
+local config = os.getenv("HOME") .. "/.config/hypr/hyprland.lua"
+local file = io.open(config, "r")
+if file then
+  file:close()
+  local ok, err = pcall(dofile, config)
+  if not ok then
+    io.stderr:write("[scan] " .. tostring(err) .. "\n")
+    os.exit(1)
+  end
+end
+LUA
+
+  nvim -l "$scanner"
+  local status=$?
+  rm -f "$scanner"
+  return $status
+}
+
+# ---------------------------------------------------------------------------
+# Collectors emit unified TSV records:
+#   tool <TAB> chord <TAB> action <TAB> kind <TAB> arg
+# kind/arg are only meaningful for hypr rows (dispatch); empty otherwise.
+# Each collector degrades to "emit nothing" on failure (collect() reports).
+# ---------------------------------------------------------------------------
+
+collect_hypr() {
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  [[ -f $HYPR_CONFIG ]] || return 0
+
+  local scan="" modmask desc key kind arg k mods chord
+  scan=$(scan_hypr 2>/dev/null) || scan=""
+
+  declare -A seen=()
+
+  # Source scan first: these rows have descriptions AND dispatch info.
+  if [[ -n $scan ]]; then
+    while IFS=$'\t' read -r modmask desc key kind arg; do
+      [[ -z ${modmask:-} || -z ${desc:-} ]] && continue
+      k="${modmask}|${key,,}"
+      seen["$k"]=1
+      mods=$(modmask_to_text "$modmask")
+      if [[ -n $mods ]]; then
+        chord="$mods + $(display_key "$key")"
+      else
+        chord="$(display_key "$key")"
+      fi
+      printf 'hypr\t%s\t%s\t%s\t%s\n' "$chord" "$desc" "$kind" "$arg"
+    done <<<"$scan"
+  fi
+
+  # Live binds the scan doesn't know about (added at runtime, or scan
+  # failure): emit info-poor rows using whatever description Hyprland has.
+  local live parsed
+  live=$(hyprctl binds 2>/dev/null) || live=""
+  [[ -n $live ]] || return 0
+
+  parsed=$(awk '
+    function emit() {
+      if (!seen) return
+      seen = 0
+      printf "%s\x1f%s\x1f%s\n", f["modmask"], f["key"], f["description"]
+    }
+    /^bind/ { emit(); seen = 1; delete f; next }
+    seen && match($0, /^\t[a-z]+: /) { f[substr($0, 2, RLENGTH - 3)] = substr($0, RLENGTH + 1) }
+    END { emit() }
+  ' <<<"$live")
+
+  while IFS=$'\x1f' read -r modmask key desc; do
+    [[ -z ${key:-} ]] && continue
+    k="${modmask}|${key,,}"
+    [[ -n ${seen[$k]:-} ]] && continue
+    [[ -z ${desc:-} ]] && desc="(runtime bind)"
+    mods=$(modmask_to_text "$modmask")
+    if [[ -n $mods ]]; then
+      chord="$mods + $(display_key "$key")"
+    else
+      chord="$(display_key "$key")"
+    fi
+    printf 'hypr\t%s\t%s\t\t\n' "$chord" "$desc"
+  done <<<"$parsed"
+}
+
+# --- COLLECTORS: (tmux, ghostty, nvim collectors are added above this line
+# --- in later commits; collect() skips anything not yet defined) ---------
+
+# ---------------------------------------------------------------------------
+# Cache: keyed on tracked config contents + live binds + this script itself
+# ---------------------------------------------------------------------------
+
+cache_key() {
+  {
+    printf 'v1\n'
+    sha256sum "$0" 2>/dev/null || printf 'script\n'
+    local f
+    for f in "$HYPR_CONFIG" "$NVIM_CONFIG" "$NVIM_LOCK" "$TMUX_CONFIG" "$GHOSTTY_CONFIG"; do
+      if [[ -f $f ]]; then
+        printf '%s ' "$(basename "$f")"
+        sha256sum <"$f"
+      fi
+    done
+    hyprctl binds 2>/dev/null || true
+  } | sha256sum | cut -d' ' -f1
+}
+
+records() {
+  local key file tmp
+  key=$(cache_key)
+  file="$CACHE_DIR/records-$key.tsv"
+
+  if [[ -s $file && $refresh != true ]]; then
+    cat "$file"
+    return 0
+  fi
+
+  mkdir -p "$CACHE_DIR"
+  tmp=$(mktemp "$CACHE_DIR/records.XXXXXX")
+  if ! collect >"$tmp" || [[ ! -s $tmp ]]; then
+    rm -f "$tmp"
+    echo "keybinds-cheatsheet: no records collected" >&2
+    return 1
+  fi
+  mv "$tmp" "$file"
+  find "$CACHE_DIR" -maxdepth 1 -name 'records-*.tsv' ! -name "records-$key.tsv" -delete 2>/dev/null || true
+  cat "$file"
+}
+
+collect() {
+  local c
+  for c in $TOOL_ORDER; do
+    if type "collect_$c" >/dev/null 2>&1; then
+      "collect_$c" || echo "keybinds-cheatsheet: collector '$c' failed" >&2 || true
+    fi
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Formatting and (task: UI) main
+# ---------------------------------------------------------------------------
+
+format_rows() {
+  awk -F'\t' -v order="$TOOL_ORDER" '
+    BEGIN {
+      n = split(order, o, " ")
+      for (i = 1; i <= n; i++) prio[o[i]] = i
+    }
+    { printf "%03d\t[%s] %s → %s\n", prio[$1], $1, $2, $3 }
+  ' | sort | cut -f2- | awk '!seen[$0]++'
+}
+
+main() {
+  if [[ -n $print_only ]]; then
+    local rows
+    rows=$(records | format_rows) || return 1
+    if [[ $print_only != all ]]; then
+      rows=$(grep -F "[$print_only] " <<<"$rows" || true)
+    fi
+    [[ -n $rows ]] && printf '%s\n' "$rows"
+    return 0
+  fi
+
+  echo "keybinds-cheatsheet: menu not wired yet (add in a later task)" >&2
+  return 1
+}
+
+main "$@"
