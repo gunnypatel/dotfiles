@@ -264,6 +264,95 @@ collect_hypr() {
   done <<<"$parsed"
 }
 
+collect_tmux() {
+  command -v tmux >/dev/null 2>&1 || return 0
+  [[ -f $TMUX_CONFIG ]] || return 0
+
+  local socket_dir socket out
+  socket_dir=$(mktemp -d) || return 1
+  socket="$socket_dir/tmux"
+  # Self-disarms: a bare RETURN trap would re-fire when the CALLER returns,
+  # after these locals are gone (fatal under set -u).
+  trap 'tmux -S "$socket" kill-server >/dev/null 2>&1 || true; rm -f "$socket"; rmdir "$socket_dir" 2>/dev/null || true; trap - RETURN' RETURN
+
+  # Isolated throwaway server: unbind every table, load ONLY the user's
+  # config, then list everything with tmux's own command notes (-N).
+  # Setup and listing are separate clients: the config's plugin loader
+  # (tpm run-shell) and any if-shell conditions apply binds asynchronously
+  # in the server, so we poll until the key tables stop changing before
+  # trusting the listing.
+  if ! tmux -S "$socket" -f /dev/null start-server \; \
+      unbind-key -a -T prefix \; \
+      unbind-key -a -T root \; \
+      unbind-key -a -T copy-mode \; \
+      unbind-key -a -T copy-mode-vi \; \
+      source-file "$TMUX_CONFIG" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local prev=-1 cur=-2 tries=0
+  while [[ $cur != "$prev" && $tries -lt 20 ]]; do
+    prev=$cur
+    sleep 0.15
+    cur=$(tmux -S "$socket" list-keys 2>/dev/null | wc -l) || cur=-1
+    tries=$((tries + 1))
+  done
+
+  if ! out=$(tmux -S "$socket" \
+      show-options -g prefix \; \
+      show-options -g prefix2 \; \
+      list-keys -aN -T prefix -P "prefix" \; \
+      list-keys -aN -T root -P "root" \; \
+      list-keys -aN -T copy-mode-vi -P "copy-mode-vi" 2>/dev/null); then
+    return 1
+  fi
+  [[ -n $out ]] || return 1
+
+  printf '%s\n' "$out" | awk '
+    function key_part(part, is_mod) {
+      gsub(/^\\/, "", part)
+      if (is_mod && part == "C") return "CTRL"
+      if (is_mod && part == "M") return "ALT"
+      if (is_mod && part == "S") return "SHIFT"
+      if (part == "Space") return "SPACE"
+      if (part == "BSpace") return "BACKSPACE"
+      if (part == "BTab") return "SHIFT TAB"
+      if (part == "PPage") return "PAGE UP"
+      if (part == "NPage") return "PAGE DOWN"
+      if (part == "DC") return "DELETE"
+      if (part == "IC") return "INSERT"
+      return toupper(part)
+    }
+    function key_text(key,  parts, n, i, text) {
+      gsub(/\\/, "", key)
+      n = split(key, parts, "-")
+      text = ""
+      for (i = 1; i <= n; i++)
+        text = text (text == "" ? "" : " ") key_part(parts[i], i < n)
+      return text
+    }
+    $1 == "prefix" && NF == 2  { prefix = $2; next }
+    $1 == "prefix2" && NF == 2 { prefix2 = $2; next }
+    {
+      if (!hdr) {
+        p = key_text(prefix)
+        if (prefix2 != "" && prefix2 != "None") p = p " / " key_text(prefix2)
+        printf "tmux\tPREFIX\t%s\n", p
+        hdr = 1
+      }
+      table = $1
+      key = $2
+      note = $0
+      sub(/^[^ ]+ +[^ ]+ +/, "", note)
+      if (table == "root") combo = key_text(key)
+      else if (table == "copy-mode-vi") combo = "COPY MODE + " key_text(key)
+      else combo = "PREFIX + " key_text(key)
+      if (length(note) > 70) note = substr(note, 1, 67) "..."
+      printf "tmux\t%s\t%s\n", combo, note
+    }
+  ' | awk -F'\t' '!seen[$0]++'
+}
+
 # --- COLLECTORS: (tmux, ghostty, nvim collectors are added above this line
 # --- in later commits; collect() skips anything not yet defined) ---------
 
