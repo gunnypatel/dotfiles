@@ -536,6 +536,24 @@ format_rows() {
   ' | sort | cut -f2- | awk '!seen[$0]++'
 }
 
+dispatch_selection() {
+  local tool="$1" chord="$2" kind="$3" arg="$4"
+
+  case "$tool:$kind" in
+    hypr:exec)
+      if ! hyprctl dispatch exec "$arg" >/dev/null 2>&1; then
+        noctalia msg notification-show 'Cheatsheet' "Dispatch failed: $chord" 2>/dev/null || true
+      fi
+      ;;
+    hypr:lua)
+      if ! hyprctl eval "$arg" >/dev/null 2>&1; then
+        noctalia msg notification-show 'Cheatsheet' "Dispatch failed: $chord" 2>/dev/null || true
+      fi
+      ;;
+    *) : ;;
+  esac
+}
+
 main() {
   if [[ -n $print_only ]]; then
     local rows
@@ -547,8 +565,24 @@ main() {
     return 0
   fi
 
-  echo "keybinds-cheatsheet: menu not wired yet (add in a later task)" >&2
-  return 1
+  if [[ -z $selection ]]; then
+    command -v fuzzel >/dev/null 2>&1 || {
+      echo "keybinds-cheatsheet: fuzzel is not installed" >&2
+      return 1
+    }
+    selection=$(records | format_rows | fuzzel --dmenu --prompt 'binds ') || return 0
+  fi
+  [[ -n $selection ]] || return 0
+
+  local record tool chord action kind arg
+  # no early exit in awk: closing the pipe would SIGPIPE records' cat under
+  # pipefail and abort the script before dispatching
+  record=$(records | awk -F'\t' -v sel="$selection" \
+    'sprintf("[%s] %s → %s", $1, $2, $3) == sel { print }')
+  [[ -n $record ]] || return 0
+
+  IFS=$'\t' read -r tool chord action kind arg <<<"$record"
+  dispatch_selection "$tool" "$chord" "${kind:-}" "${arg:-}"
 }
 
 main "$@"
