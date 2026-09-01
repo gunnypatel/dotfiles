@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboard Cheatsheet
+Comment=Searchable keybindings for Hyprland, tmux, Ghostty and Neovim
+Exec=/home/gunny/.local/bin/keybinds-cheatsheet
+Icon=input-keyboard
+Categories=Utility;
+NoDisplay=false

@@ -117,6 +117,7 @@ package manager.
 |------|--------|-----------------|-------|
 | tmux | `sudo dnf install tmux` | `sudo apt install tmux` | `brew install tmux` |
 | fzf | `sudo dnf install fzf` | `sudo apt install fzf` | `brew install fzf` |
+| fuzzel | `sudo dnf install fuzzel` | `sudo apt install fuzzel` | — (Wayland only) |
 | git | `sudo dnf install git` | `sudo apt install git` | `brew install git` |
 | fish | `sudo dnf install fish` | `sudo apt install fish` | `brew install fish` |
 | ripgrep | `sudo dnf install ripgrep` | `sudo apt install ripgrep` | `brew install ripgrep` |
