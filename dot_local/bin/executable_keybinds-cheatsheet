@@ -405,6 +405,70 @@ collect_ghostty() {
     done
 }
 
+# Translate an nvim key-notation lhs (e.g. "<C-h>", "<leader>sf", "<Esc>")
+# into cheatsheet style ("CTRL H", "LEADER SF", "ESC"). mapleader is a
+# literal space, so a leading space in lhs means leader.
+nvim_lhs_text() {
+  printf '%s\n' "$1" | perl -pe '
+    s/\A /LEADER /;
+    s/<leader>/LEADER /g;
+    s/<C-([A-Za-z])>/CTRL \U$1\E /g;
+    s/<C-\\>/CTRL BACKSLASH /g;
+    s/<([MA])-([A-Za-z])>/ALT \U$2\E /g;
+    s/<S-([A-Za-z]+)>/SHIFT \U$1\E /g;
+    s/<D-([A-Za-z])>/CMD \U$1\E /g;
+    s/<CR>/ENTER /gi;      s/<Enter>/ENTER /;
+    s/<Esc>/ESC /g;        s/<Tab>/TAB /;      s/<BS>/BACKSPACE /;
+    s/<Space>/SPACE /;     s/<Del>/DELETE /;
+    s/<PageUp>/PAGE UP /gi;   s/<PageDown>/PAGE DOWN /gi;
+    s/<Home>/HOME /gi;     s/<End>/END /gi;
+    s/<Up>/UP /; s/<Down>/DOWN /; s/<Left>/LEFT /; s/<Right>/RIGHT /;
+    s/<nowait>//gi;       s/<silent>//gi;
+    s/<F(\d+)>/F$1 /g;
+    s/<([A-Za-z0-9_-]+)>/\U$1\E /g;
+    s/([a-z])/\U$1/g;
+  ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
+
+collect_nvim() {
+  command -v nvim >/dev/null 2>&1 || return 0
+  [[ -f $NVIM_CONFIG ]] || return 0
+
+  # --headless loads the user config (plugins included: telescope, neo-tree,
+  # ...), so this dump sees every effective mapping with its description.
+  # Only mappings WITH a description are kept — that drops keymap noise
+  # without losing anything the user can act on meaningfully.
+  # Rows go to a file (not print()): headless print() routes through the
+  # message stream, which this nvim build puts on stderr.
+  local dump outfile raw m lhs desc
+  dump=$(mktemp /tmp/keybinds-nvim.XXXXXX.lua)
+  outfile=$(mktemp /tmp/keybinds-nvim-out.XXXXXX)
+  cat >"$dump" <<'LUA'
+local modes = { 'n', 'x', 's', 'o', 'i', 't', 'c' }
+local rows = {}
+for _, m in ipairs(modes) do
+  for _, k in ipairs(vim.api.nvim_get_keymap(m)) do
+    if k.desc and k.desc ~= '' and k.lhs and k.lhs ~= '' then
+      rows[#rows + 1] = string.format('%s\t%s\t%s', m, k.lhs, k.desc)
+    end
+  end
+end
+local f = assert(io.open(os.getenv('KEYBINDS_NVIM_OUT'), 'w'))
+f:write(table.concat(rows, '\n'))
+f:close()
+LUA
+
+  KEYBINDS_NVIM_OUT="$outfile" nvim --headless +"lua dofile('$dump')" +qa >/dev/null 2>&1 || true
+  rm -f "$dump"
+  [[ -s $outfile ]] || { rm -f "$outfile"; return 0; }
+
+  while IFS=$'\t' read -r m lhs desc; do
+    [[ -z ${m:-} ]] && continue
+    printf 'nvim\t%s %s\t%s\n' "$m" "$(nvim_lhs_text "$lhs")" "$desc"
+  done <"$outfile" | awk -F'\t' '!seen[$0]++'
+  rm -f "$outfile"
+}
+
 # --- COLLECTORS: (tmux, ghostty, nvim collectors are added above this line
 # --- in later commits; collect() skips anything not yet defined) ---------
 
