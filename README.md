@@ -106,6 +106,15 @@ v5 is a native Wayland shell (not the old quickshell v4) — see
 [docs.noctalia.dev](https://docs.noctalia.dev). System packages are listed in
 *Prerequisites*, not scripted.
 
+**Temporary backport (remove on next Hyprland release):**
+`~/.config/systemd/user/hyprland-session.target` + the session-target
+listeners in `hyprland.lua` activate `graphical-session.target` (needed by
+xdg-desktop-portal / flatpak file dialogs). Hyprland 0.56.2 doesn't do this
+natively; the release after it does (PR #15776). Once
+`rpm -ql hyprland | grep hyprland-session.target` returns a hit:
+`systemctl --user revert hyprland-session.target`, delete the unit file, and
+remove the listeners.
+
 ## Prerequisites
 
 ### System packages

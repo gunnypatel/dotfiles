@@ -33,6 +33,22 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("noctalia")
 end)
 
+-- Tell systemd a graphical session exists: hyprland-session.target binds to
+-- graphical-session.target, which xdg-desktop-portal requires (Requisite=).
+-- Without it, flatpak file dialogs (e.g. Bottles "Run Executable...") open
+-- nothing. TEMPORARY backport: the release after 0.56.2 starts this target
+-- itself (upstream PR #15776). When Fedora ships it — check
+-- `rpm -ql hyprland | grep hyprland-session.target` — remove this block and
+-- dot_config/systemd/user/hyprland-session.target.
+hl.on("hyprland.start", function()
+    hl.exec_cmd("systemctl --user start hyprland-session.target")
+end)
+hl.on("hyprland.shutdown", function()
+    -- stop the graphical target itself, not just hyprland-session.target:
+    -- systemctl blocks until dependent services (portals) have really stopped
+    os.execute("systemctl --user stop hyprland-session.target graphical-session.target")
+end)
+
 --------------------------
 -- ENVIRONMENT
 --------------------------
@@ -124,6 +140,7 @@ hl.bind(mainMod .. " + W", hl.dsp.window.close(), { description = "Close window"
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen(), { description = "Toggle fullscreen" })
 hl.bind(mainMod .. " + T", hl.dsp.window.float({ action = "toggle" }), { description = "Toggle floating" })
 hl.bind(mainMod .. " + C", hl.dsp.window.center(), { description = "Center floating window" })  -- center a floating window
+hl.bind(mainMod .. " + P", hl.dsp.window.pin({ action = "toggle" }), { description = "Pin floating window to all workspaces" })
 hl.bind(mainMod .. " + M", hl.dsp.layout("swapwithmaster"), { description = "Promote window to center" })  -- promote focused window to center
 
 -- Master splits: SUPER+SHIFT+M pulls the focused window into the center

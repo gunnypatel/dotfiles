@@ -1,0 +1,20 @@
+# TEMPORARY backport of Hyprland's own systemd/hyprland-session.target
+# (upstream PR #15776, merged 2026-08-22 — first release AFTER the installed
+# 0.56.2). Without an active graphical-session.target, xdg-desktop-portal
+# refuses to start (its unit has Requisite=graphical-session.target), so
+# flatpak file dialogs (e.g. Bottles "Run Executable...") silently do
+# nothing. hyprland.lua starts/stops this unit on compositor start/shutdown.
+#
+# REMOVE when Fedora ships a Hyprland that has the unit natively — check:
+#   rpm -ql hyprland | grep hyprland-session.target
+# then:
+#   1. systemctl --user revert hyprland-session.target
+#   2. delete this file
+#   3. remove the session-target listeners in hyprland.lua
+
+[Unit]
+Description=Hyprland session
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+PropagatesStopTo=graphical-session.target
