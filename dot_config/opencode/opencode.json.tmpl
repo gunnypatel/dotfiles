@@ -2,9 +2,11 @@
    (defined in ~/.config/chezmoi/chezmoi.toml under [data.opencode]) so the
    secret never enters the repo. The z.ai web-reader MCP entry is emitted only
    when zAiWebReaderMcpToken is set — omit the [data.opencode] table (or leave
-   the key empty) on systems that shouldn't have it. Other mcp entries are
-   unaffected. */ -}}
+   the key empty) on systems that shouldn't have it. The freecad MCP entry is
+   emitted only on personal machines — set [data.machine] profile = "personal"
+   in chezmoi.toml (omit or use another value on work machines). */ -}}
 {{- $token := dig "opencode" "zAiWebReaderMcpToken" "" . -}}
+{{- $profile := dig "machine" "profile" "" . -}}
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
@@ -15,6 +17,13 @@
     "external_directory": {}
   },
   "mcp": {
+{{- if eq $profile "personal" }}
+    "freecad": {
+      "type": "local",
+      "command": ["uvx", "freecad-mcp"],
+      "enabled": true
+    }{{ if $token }},{{ end }}
+{{- end }}
 {{- if $token }}
     "web-reader": {
       "type": "remote",
