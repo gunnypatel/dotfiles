@@ -532,7 +532,19 @@ format_rows() {
       n = split(order, o, " ")
       for (i = 1; i <= n; i++) prio[o[i]] = i
     }
-    { printf "%03d\t[%s] %s → %s\n", prio[$1], $1, $2, $3 }
+    # Pass 1: buffer rows and measure column widths (tool tag + chord) so the
+    # arrows line up; format string is built dynamically for awk portability.
+    {
+      p[NR] = ($1 in prio) ? prio[$1] : 99
+      tool[NR] = $1; chord[NR] = $2; action[NR] = $3
+      if (length($2) > cw) cw = length($2)
+      if (length($1) + 2 > tw) tw = length($1) + 2
+    }
+    END {
+      fmt = "%03d\t%-" tw "s %-" cw "s → %s\n"
+      for (i = 1; i <= NR; i++)
+        printf fmt, p[i], "[" tool[i] "]", chord[i], action[i]
+    }
   ' | sort | cut -f2- | awk '!seen[$0]++'
 }
 
@@ -575,10 +587,24 @@ main() {
   [[ -n $selection ]] || return 0
 
   local record tool chord action kind arg
-  # no early exit in awk: closing the pipe would SIGPIPE records' cat under
-  # pipefail and abort the script before dispatching
-  record=$(records | awk -F'\t' -v sel="$selection" \
-    'sprintf("[%s] %s → %s", $1, $2, $3) == sel { print }')
+  # Two-pass like format_rows: measure column widths, rebuild each row with
+  # the same padding, compare against the picked text. Reads all records (no
+  # early exit: closing the pipe would SIGPIPE records' cat under pipefail
+  # and abort the script before dispatching).
+  record=$(records | awk -F'\t' -v sel="$selection" '
+    {
+      line[NR] = $0
+      tool[NR] = $1; chord[NR] = $2; action[NR] = $3
+      if (length($2) > cw) cw = length($2)
+      if (length($1) + 2 > tw) tw = length($1) + 2
+    }
+    END {
+      fmt = "%-" tw "s %-" cw "s → %s"
+      for (i = 1; i <= NR; i++)
+        if (sprintf(fmt, "[" tool[i] "]", chord[i], action[i]) == sel)
+          print line[i]
+    }
+  ')
   [[ -n $record ]] || return 0
 
   IFS=$'\t' read -r tool chord action kind arg <<<"$record"
