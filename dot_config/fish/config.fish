@@ -51,6 +51,11 @@ alias claude-gpt='claude --settings \'{"env":{"CLAUDE_CODE_USE_BEDROCK":"0"}}\' 
 alias osp='opencode --dangerously-skip-permissions'
 alias ocy='opencode --yolo'
 
+# gearlever (AppImage manager): gll = list installed, glu = check updates
+alias gearlever='flatpak run it.mijorus.gearlever'
+alias gll='flatpak run it.mijorus.gearlever --list-installed'
+alias glu='flatpak run it.mijorus.gearlever --list-updates'
+
 # docker: alias to podman only when podman is installed AND docker is not
 if not command -q docker; and command -q podman
     alias docker='podman'

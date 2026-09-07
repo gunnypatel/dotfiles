@@ -49,6 +49,13 @@ hl.on("hyprland.shutdown", function()
     os.execute("systemctl --user stop hyprland-session.target graphical-session.target")
 end)
 
+-- AppImage updates (GearLever): check managed apps in ~/AppImages in the
+-- background and send a desktop notification when new versions are found.
+-- Apply with: flatpak run it.mijorus.gearlever --list-updates / --update <file>
+hl.on("hyprland.start", function()
+    hl.exec_cmd("flatpak run it.mijorus.gearlever --fetch-updates")
+end)
+
 --------------------------
 -- ENVIRONMENT
 --------------------------
