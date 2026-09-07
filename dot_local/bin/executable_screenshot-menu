@@ -1,0 +1,33 @@
+#!/bin/sh
+# Screenshot picker: fuzzel --dmenu over the screenshot engine's mode x
+# destination matrix (same fuzzel pattern as keybinds-cheatsheet). Launched
+# from the Noctalia launcher's "Screenshot" entry; SUPER+SHIFT+S remains the
+# zero-friction path for the common region-to-clipboard shot.
+set -eu
+
+command -v fuzzel >/dev/null 2>&1 || {
+    noctalia msg notification-show 'Screenshot' 'fuzzel is not installed'
+    exit 1
+}
+
+choice=$(printf '%s\n' \
+    'region  → clipboard' \
+    'region  → file' \
+    'window  → clipboard' \
+    'window  → file' \
+    'monitor → clipboard' \
+    'monitor → file' \
+    'all     → clipboard' \
+    'all     → file' \
+    | fuzzel --dmenu --prompt 'screenshot ') || exit 0
+
+mode=${choice%% *}
+dest=${choice##*→ }
+
+case $mode:$dest in
+    region:clipboard|region:file|window:clipboard|window:file|\
+    monitor:clipboard|monitor:file|all:clipboard|all:file) ;;
+    *) exit 0 ;;
+esac
+
+exec screenshot --to "$dest" "$mode"

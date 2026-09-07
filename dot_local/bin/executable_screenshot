@@ -1,0 +1,76 @@
+#!/bin/sh
+# Spectacle-style screenshot engine for Hyprland, built on the native wlroots
+# capture stack (grim + slurp). One subcommand per capture mode; destination
+# is chosen per shot -- clipboard by default (the common case), file for
+# keepers. Every shot ends in a Noctalia notification.
+#
+#   screenshot [--to clipboard|file] <region|window|monitor|all>
+#
+# Esc during an interactive selection cancels silently. The menu front-end
+# (screenshot-menu) and the SUPER+SHIFT+S bind both call into this script.
+set -eu
+
+usage='usage: screenshot [--to clipboard|file] <region|window|monitor|all>'
+
+to=clipboard
+if [ "${1:-}" = "--to" ]; then
+    [ $# -ge 3 ] || { echo "$usage" >&2; exit 1; }
+    to=$2
+    shift 2
+fi
+mode=${1:-}
+
+case $to in
+    clipboard|file) ;;
+    *) echo "screenshot: --to must be clipboard or file" >&2; exit 1 ;;
+esac
+case $mode in
+    region|window|monitor|all) ;;
+    *) echo "$usage" >&2; exit 1 ;;
+esac
+
+notify() { noctalia msg notification-show 'Screenshot' "$1" 2>/dev/null || true; }
+
+# Resolve what grim captures: a slurp selection, the active window's
+# geometry, an output name, or everything.
+geo=
+mon=
+case $mode in
+region)
+    # slurp exits nonzero on Esc -- that is a cancelled shot, not an error
+    geo=$(slurp 2>/dev/null) || exit 0
+    [ -n "$geo" ] || exit 0
+    ;;
+window)
+    # hyprctl prints non-JSON "Invalid" when nothing is focused; the jq guard
+    # turns that (and any parse failure) into an empty string
+    geo=$(hyprctl -j activewindow 2>/dev/null \
+        | jq -r 'if (.at and .size) then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end' 2>/dev/null \
+        || true)
+    [ -n "$geo" ] || { notify 'No active window'; exit 0; }
+    ;;
+monitor)
+    mon=$(slurp -o -f '%o' 2>/dev/null) || exit 0
+    [ -n "$mon" ] || exit 0
+    ;;
+esac
+
+capture() {
+    case $mode in
+        region)  grim -g "$geo" "$@" ;;
+        window)  grim -g "$geo" "$@" ;;
+        monitor) grim -o "$mon" "$@" ;;
+        all)     grim "$@" ;;
+    esac
+}
+
+if [ "$to" = file ]; then
+    dir="$(xdg-user-dir PICTURES 2>/dev/null || printf '%s/Pictures' "$HOME")/Screenshots"
+    mkdir -p "$dir"
+    file="$dir/screenshot-$(date +%Y%m%d-%H%M%S)-$mode.png"
+    capture "$file"
+    notify "Saved to $file"
+else
+    capture - | wl-copy -t image/png
+    notify "Copied $mode to clipboard"
+fi

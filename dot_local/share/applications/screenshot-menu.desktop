@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Screenshot
+Comment=Pick a capture mode and destination (region, window, monitor, all)
+Exec=/home/gunny/.local/bin/screenshot-menu
+Icon=camera-photo
+Categories=Utility;
+NoDisplay=false

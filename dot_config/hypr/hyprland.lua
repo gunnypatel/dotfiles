@@ -135,6 +135,10 @@ hl.bind(mainMod .. " + SPACE",  hl.dsp.exec_cmd(ipc .. "panel-toggle launcher"),
 -- Cheatsheet: this very keybind list (SUPER+/ reads as "where are my keys?")
 hl.bind(mainMod .. " + SLASH",  hl.dsp.exec_cmd("keybinds-cheatsheet"), { description = "Keyboard cheatsheet" })
 
+-- Screenshot: region → clipboard is the 90% case (Spectacle-style engine:
+-- grim + slurp). All other mode/destination combos: launcher → "Screenshot".
+hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("screenshot region"), { description = "Screenshot region → clipboard" })
+
 -- Window ops (SUPER+W mirrors Ctrl+W: apps close a tab, or the window)
 hl.bind(mainMod .. " + W", hl.dsp.window.close(), { description = "Close window" })
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen(), { description = "Toggle fullscreen" })
@@ -241,7 +245,6 @@ hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"), { 
 hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"), { description = "Rename workspace" })
 hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(ipc .. "session lock"), { description = "Lock session" })
 hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(ipc .. "panel-toggle session"), { description = "Session menu" })
-hl.bind("PRINT",                   hl.dsp.exec_cmd(ipc .. "screenshot-region"), { description = "Screenshot region" })
 
 -- Reload (no Lua reload dispatcher yet; hyprctl works from any bind)
 hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"), { description = "Reload Hyprland config" })

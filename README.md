@@ -133,6 +133,7 @@ package manager.
 | bat | `sudo dnf install bat` | `sudo apt install bat` | `brew install bat` |
 | fd | `sudo dnf install fd-find` | `sudo apt install fd-find` | `brew install fd` |
 | clipboard | `sudo dnf install wl-clipboard` † | `sudo apt install wl-clipboard` † | built-in (`pbcopy`) |
+| screenshots | `sudo dnf install grim slurp jq` | `sudo apt install grim slurp jq` | `brew install jq` (grim/slurp: wlroots only) |
 | git-delta | `cargo install git-delta` ‡ | `cargo install git-delta` ‡ | `brew install git-delta` |
 | eza | `cargo install eza` ‡ | `cargo install eza` ‡ | `brew install eza` |
 | zoxide | `cargo install zoxide` ‡ | `cargo install zoxide` ‡ | `brew install zoxide` |
@@ -303,7 +304,7 @@ window navigation in nvim.
 | `SUPER+S` / `SUPER+Comma` | control center / Noctalia settings |
 | `SUPER+Escape` / `SUPER+Shift+E` | lock / session panel |
 | `SUPER+Shift+R` | reload Hyprland config |
-| `Print` | Noctalia region screenshot |
+| `SUPER+Shift+S` | screenshot region → clipboard (all modes: launcher → Screenshot) |
 | media/brightness keys | Noctalia OSDs |
 
 ## Key bindings (from `tmux.conf.local`)
