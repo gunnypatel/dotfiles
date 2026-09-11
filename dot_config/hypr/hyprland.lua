@@ -186,7 +186,6 @@ end
 -- window.open/title events, which Hyprland 0.56.2 never emits for XWayland
 -- windows — revisit on a newer Hyprland.)
 local gamingWs    = "gaming"
-local gamingMfact = 0.65
 
 -- One line per window; no logic changes needed to extend. class/title are
 -- regexes matched against the window's initialClass/initialTitle (RE2)
@@ -206,12 +205,6 @@ hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. g
 -- restart), and the routing rules above then silently miss their target.
 hl.workspace_rule({ workspace = "name:" .. gamingWs, persistent = true })
 
-local function gamingMfactApply()
-    -- "exact" must precede the value: as the first token it flags absolute
-    -- mode, otherwise the value is treated as a delta (0.7 delta => clamped 0.95)
-    hl.dispatch(hl.dsp.layout("mfact exact " .. gamingMfact))
-end
-
 for i, entry in ipairs(gamingWindows) do
     hl.window_rule({
         name  = "gaming-ws-" .. i,
@@ -221,17 +214,6 @@ for i, entry in ipairs(gamingWindows) do
         workspace = entry.master and gamingWs or (gamingWs .. " silent"),
     })
 end
-
--- Apply the wider gaming mfact once per session: re-applying on every
--- activation would silently revert manual SUPER+[ / SUPER+] tweaks each
--- time the workspace is re-entered.
-local gamingMfactSet = false
-hl.on("workspace.active", function(ws)
-    if ws.name == gamingWs and not gamingMfactSet then
-        gamingMfactApply()
-        gamingMfactSet = true
-    end
-end)
 
 -- Scratchpad: drop-down layer over the current workspace. Stashing is
 -- silent: focus stays here, so you can send several windows in a row.
