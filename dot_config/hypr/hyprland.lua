@@ -185,7 +185,7 @@ end
 -- the game to the center tile with SUPER+M. (An automatic master claim needs
 -- window.open/title events, which Hyprland 0.56.2 never emits for XWayland
 -- windows — revisit on a newer Hyprland.)
-local gamingWs    = "gaming"
+local gamingWs = "gaming"
 
 -- One line per window; no logic changes needed to extend. class/title are
 -- regexes matched against the window's initialClass/initialTitle (RE2)
