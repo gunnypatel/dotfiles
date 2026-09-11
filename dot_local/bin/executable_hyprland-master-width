@@ -49,6 +49,9 @@ notify() {
 }
 
 # state: one line "share TAB ws_name TAB tiled" for the ACTIVE workspace.
+# A shown special workspace takes precedence over activeworkspace: hyprctl
+# reports the underlying regular ws there, while Hyprland's dispatch targets
+# the special one (C++ layoutMsg prefers m_activeSpecialWorkspace).
 # share  = rendered percent of the widest tiled non-fullscreen window
 #          (empty when unknown, e.g. fullscreen-only workspace)
 # tiled  = count of tiled non-fullscreen windows; -1 means the query failed
@@ -60,10 +63,17 @@ def get(cmd):
     return json.loads(subprocess.run(cmd, capture_output=True, text=True).stdout)
 
 try:
-    ws      = get(["hyprctl", "-j", "activeworkspace"])
-    clients = get(["hyprctl", "-j", "clients"])
-    mons    = {m["id"]: m for m in get(["hyprctl", "-j", "monitors"])}
-    ws_id   = ws["id"]
+    ws       = get(["hyprctl", "-j", "activeworkspace"])
+    clients  = get(["hyprctl", "-j", "clients"])
+    mon_list = get(["hyprctl", "-j", "monitors"])
+    mons     = {m["id"]: m for m in mon_list}
+    ws_id, ws_name = ws["id"], ws["name"]
+    for m in mon_list:
+        if m.get("focused") is True:
+            sp = m.get("specialWorkspace") or {}
+            if sp.get("id"):
+                ws_id, ws_name = sp["id"], sp["name"]
+            break
     tiled   = [c for c in clients
                if c["workspace"]["id"] == ws_id
                and not c["floating"]
@@ -74,7 +84,7 @@ try:
         logical_w = mon["width"] / mon["scale"]
         widest    = max(c["size"][0] for c in tiled)
         share     = str(round(widest / logical_w * 100))
-    print(f"{share}\t{ws['name']}\t{len(tiled)}")
+    print(f"{share}\t{ws_name}\t{len(tiled)}")
 except Exception:
     print(f"\t?\t-1")
 PY
