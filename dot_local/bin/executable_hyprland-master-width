@@ -52,6 +52,10 @@ notify() {
 # A shown special workspace takes precedence over activeworkspace: hyprctl
 # reports the underlying regular ws there, while Hyprland's dispatch targets
 # the special one (C++ layoutMsg prefers m_activeSpecialWorkspace).
+# First-class named workspaces like "gaming" (id < 0 but not an overlay)
+# are reported by activeworkspace directly and take the normal fallback
+# path; only SHOWN overlay special workspaces (specialWorkspace id != 0 on
+# the focused monitor) take precedence.
 # share  = rendered percent of the widest tiled non-fullscreen window
 #          (empty when unknown, e.g. fullscreen-only workspace)
 # tiled  = count of tiled non-fullscreen windows; -1 means the query failed
@@ -94,7 +98,7 @@ PY
 # dispatcher fails with no window/master node), dispatch, notify.
 apply_percent() {
     pct=$(normalize_percent "$1") || { notify 'Master width' 'Invalid percent'; return 0; }
-    st=$(state)
+    st=$(state) || st="$(printf '\t?\t-1')"
     ws_name=$(printf '%s\n' "$st" | cut -f2)
     tiled=$(printf '%s\n' "$st" | cut -f3)
 
@@ -108,11 +112,34 @@ apply_percent() {
     fi
 
     mfact=$(awk -v p="$pct" 'BEGIN { printf "%.4g", p / 100 }')
-    if ! hyprctl dispatch "hl.dsp.layout('mfact exact $mfact')" >/dev/null 2>&1; then
+    out=$(hyprctl dispatch "hl.dsp.layout('mfact exact $mfact')" 2>/dev/null) || out=""
+    if [ "$out" != "ok" ]; then
         notify 'Master width' 'Dispatch failed'
         return 0
     fi
     notify 'Master width' "$pct% on $ws_name"
+}
+
+# menu: fuzzel preset picker with the current rendered share in the prompt;
+# Custom… routes to zenity --entry (ws-rename pattern).
+menu() {
+    st=$(state) || st=""
+    share=$(printf '%s\n' "$st" | cut -f1)
+
+    prompt='master '
+    [ -n "$share" ] && prompt="master $share% "
+    row=$(print_rows | fuzzel --dmenu --prompt "$prompt") || exit 0
+    [ -n "$row" ] || exit 0
+
+    if [ "$row" = "$CUSTOM_ROW" ]; then
+        pct=$(zenity --entry --title 'Master width' \
+            --text 'Master width in percent (5-95):' \
+            --entry-text "${share:-50}" 2>/dev/null) || exit 0
+        [ -n "$pct" ] || exit 0
+    else
+        pct=$(printf '%s\n' "$row" | cut -d% -f1)
+    fi
+    apply_percent "$pct"
 }
 
 # usage: self-contained usage text (no coupling to header comment lines)
@@ -140,7 +167,7 @@ main() {
             apply_percent "$2"
             ;;
         '')
-            echo "not yet implemented" >&2; exit 1
+            menu
             ;;
         *)
             usage
