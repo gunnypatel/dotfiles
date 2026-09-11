@@ -1,0 +1,67 @@
+#!/bin/sh
+# Set the master layout width (mfact) of the current workspace: fuzzel menu
+# with presets, a custom percent (zenity), or a direct --apply N. The prompt
+# shows the current RENDERED share of the widest tiled window (gaps included,
+# so 42 mfact shows ~40 rendered). mfact itself is per-workspace state in
+# Hyprland; SUPER+[ / SUPER+] still work for nudges. There is no auto-apply
+# by design — the old one-shot workspace.active handler could not survive
+# empty-workspace transitions (see
+# docs/superpowers/specs/2026-09-10-master-width-utility-design.md).
+#
+# Usage:
+#   hyprland-master-width            # menu (presets + Custom…)
+#   hyprland-master-width --apply N  # apply N percent directly
+#   hyprland-master-width --print    # dump menu rows, no UI
+set -eu
+
+# Presets: percent TAB label. One line per preset.
+PRESETS='
+42	Default (27"-comfort window)
+50	Half
+65	Gaming (wide sides for references)
+75	Wide (12.5% sides)
+'
+
+CUSTOM_ROW="Custom…"
+
+# normalize_percent P: validate (digits, optional single decimal point) and
+# clamp to 5..95 (Hyprland's own mfact clamp). Echo the normalized percent,
+# or return 1 on invalid input.
+normalize_percent() {
+    pct=$1
+    case "$pct" in
+        '' | *[!0-9.]*) return 1 ;;
+        *.*.*) return 1 ;;
+    esac
+    awk -v p="$pct" 'BEGIN { if (p < 5) p = 5; if (p > 95) p = 95; printf "%.4g\n", p }'
+}
+
+# Menu rows: "42%  Default (27"-comfort window)" … + Custom… row.
+print_rows() {
+    printf '%s\n' "$PRESETS" | awk -F'\t' 'NF == 2 { printf "%s%%  %s\n", $1, $2 }'
+    printf '%s\n' "$CUSTOM_ROW"
+}
+
+main() {
+    case "${1:-}" in
+        --print)
+            print_rows
+            ;;
+        --normalize)
+            [ $# -eq 2 ] || { echo "usage: $0 --normalize N" >&2; exit 1; }
+            normalize_percent "$2"
+            ;;
+        --apply)
+            echo "not yet implemented" >&2; exit 1
+            ;;
+        '')
+            echo "not yet implemented" >&2; exit 1
+            ;;
+        *)
+            sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
