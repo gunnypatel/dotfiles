@@ -10,8 +10,9 @@
 #
 # Usage:
 #   hyprland-master-width            # menu (presets + Custom…)
-#   hyprland-master-width --apply N  # apply N percent directly
+#   hyprland-master-width --apply N  # apply N percent directly (5-95)
 #   hyprland-master-width --print    # dump menu rows, no UI
+#   hyprland-master-width --normalize N  # validate/clamp N; print result (tests)
 set -eu
 
 # Presets: percent TAB label. One line per preset.
@@ -42,6 +43,79 @@ print_rows() {
     printf '%s\n' "$CUSTOM_ROW"
 }
 
+# notify TITLE BODY: best-effort Noctalia notification (never fails the script)
+notify() {
+    noctalia msg notification-show "$1" "$2" 2>/dev/null || true
+}
+
+# state: one line "share TAB ws_name TAB tiled" for the ACTIVE workspace.
+# share  = rendered percent of the widest tiled non-fullscreen window
+#          (empty when unknown, e.g. fullscreen-only workspace)
+# tiled  = count of tiled non-fullscreen windows; -1 means the query failed
+state() {
+    python3 - <<'PY'
+import json, subprocess
+
+def get(cmd):
+    return json.loads(subprocess.run(cmd, capture_output=True, text=True).stdout)
+
+try:
+    ws      = get(["hyprctl", "-j", "activeworkspace"])
+    clients = get(["hyprctl", "-j", "clients"])
+    mons    = {m["id"]: m for m in get(["hyprctl", "-j", "monitors"])}
+    ws_id   = ws["id"]
+    tiled   = [c for c in clients
+               if c["workspace"]["id"] == ws_id
+               and not c["floating"]
+               and not c["fullscreen"]]
+    share = ""
+    if tiled:
+        mon       = mons[tiled[0]["monitor"]]
+        logical_w = mon["width"] / mon["scale"]
+        widest    = max(c["size"][0] for c in tiled)
+        share     = str(round(widest / logical_w * 100))
+    print(f"{share}\t{ws['name']}\t{len(tiled)}")
+except Exception:
+    print(f"\t?\t-1")
+PY
+}
+
+# apply_percent P: normalize, pre-check for a tiled window (the layout
+# dispatcher fails with no window/master node), dispatch, notify.
+apply_percent() {
+    pct=$(normalize_percent "$1") || { notify 'Master width' 'Invalid percent'; return 0; }
+    st=$(state)
+    ws_name=$(printf '%s\n' "$st" | cut -f2)
+    tiled=$(printf '%s\n' "$st" | cut -f3)
+
+    if [ "$tiled" = "0" ]; then
+        notify 'Master width' 'No tiled window on this workspace'
+        return 0
+    fi
+    if [ "$tiled" = "-1" ]; then
+        notify 'Master width' 'Could not query workspace state'
+        return 0
+    fi
+
+    mfact=$(awk -v p="$pct" 'BEGIN { printf "%.4g", p / 100 }')
+    if ! hyprctl dispatch "hl.dsp.layout('mfact exact $mfact')" >/dev/null 2>&1; then
+        notify 'Master width' 'Dispatch failed'
+        return 0
+    fi
+    notify 'Master width' "$pct% on $ws_name"
+}
+
+# usage: self-contained usage text (no coupling to header comment lines)
+usage() {
+    cat >&2 <<'EOF'
+Usage:
+  hyprland-master-width            # menu (presets + Custom…)
+  hyprland-master-width --apply N  # apply N percent directly (5-95)
+  hyprland-master-width --print    # dump menu rows, no UI
+  hyprland-master-width --normalize N  # validate/clamp N; print result (tests)
+EOF
+}
+
 main() {
     case "${1:-}" in
         --print)
@@ -52,13 +126,14 @@ main() {
             normalize_percent "$2"
             ;;
         --apply)
-            echo "not yet implemented" >&2; exit 1
+            [ $# -eq 2 ] || { echo "usage: $0 --apply N" >&2; exit 1; }
+            apply_percent "$2"
             ;;
         '')
             echo "not yet implemented" >&2; exit 1
             ;;
         *)
-            sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' >&2
+            usage
             exit 1
             ;;
     esac
