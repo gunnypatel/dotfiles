@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hyprland Master Width
+Comment=Set the master layout width of the current workspace
+Exec=/home/gunny/.local/bin/hyprland-master-width
+Icon=preferences-system
+Categories=Utility;
+NoDisplay=false
