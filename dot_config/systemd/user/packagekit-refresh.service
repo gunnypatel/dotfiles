@@ -1,0 +1,24 @@
+# Keep PackageKit's metadata cache warm so packagekitd can start fast.
+#
+# Why: packagekitd loads repositories — downloading any stale metadata —
+# BEFORE claiming its DBus name. On a cold cache with ~30 repos that takes
+# longer than systemd's 45s startup timeout, so systemd kills the daemon
+# mid-download and every retry starts over: Discover's Updates page freezes
+# on a DBus call that never returns. Under Plasma, DiscoverNotifier
+# (OnlyShowIn=KDE, /etc/xdg/autostart/org.kde.discover.notifier.desktop)
+# refreshed daily so the cache never went stale; Hyprland runs nothing
+# PackageKit-related, so this timer replaces it.
+#
+# Companions: packagekit-refresh.timer (schedule), and
+# run_once_install-packagekit-timeout.sh.tmpl (raises the startup timeout so
+# the first cold start after a long gap can finish).
+#
+# A single failing repo makes pkcon exit non-zero: visible in the journal,
+# but the timer reschedules regardless.
+
+[Unit]
+Description=Refresh PackageKit metadata cache (warm cache = fast packagekitd start)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pkcon refresh

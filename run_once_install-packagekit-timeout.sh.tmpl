@@ -1,0 +1,44 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Install a systemd drop-in raising packagekit.service's startup timeout.
+#
+# Why: packagekitd downloads stale repo metadata during startup, BEFORE
+# claiming org.freedesktop.PackageKit. With ~30 repos a cold start exceeds
+# systemd's 45s TimeoutStartSec, systemd kills the daemon mid-download, and
+# every dbus-activation retry restarts the download from scratch — Discover's
+# Updates page freezes on a call that never returns (observed 2026-09-19:
+# 8 consecutive startup timeouts after a 12-day PackageKit gap).
+#
+# The companion packagekit-refresh.timer keeps the cache warm so the daemon
+# normally starts in seconds; this drop-in covers the first cold start after
+# a long gap. Remove both if PackageKit ever moves metadata loading off the
+# pre-DBus-claim path.
+#
+# System file outside $HOME → script pattern, same as
+# run_once_install-resolved-conf.sh.tmpl. Idempotent: rewrites only on
+# content change; editing the heredoc re-runs the script (hash changes).
+set -euo pipefail
+
+DEST_DIR=/etc/systemd/system/packagekit.service.d
+DEST=$DEST_DIR/timeout.conf
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+cat > "$TMP" <<'EOF'
+[Service]
+# packagekitd downloads stale repo metadata before claiming its DBus name;
+# a cold start with ~30 repos needs more than the default 45s.
+TimeoutStartSec=600
+EOF
+
+# Nothing to do if the desired content is already in place. `2>/dev/null`
+# hides the "No such file or directory" noise on a first-ever apply.
+if sudo cmp -s "$DEST" "$TMP" 2>/dev/null; then
+    exit 0
+fi
+
+sudo install -d -m 0755 -o root -g root "$DEST_DIR"
+sudo install -m 0644 -o root -g root "$TMP" "$DEST"
+sudo systemctl daemon-reload
+echo "chezmoi: installed $DEST (packagekitd startup timeout -> 600s)"
+{{- end -}}

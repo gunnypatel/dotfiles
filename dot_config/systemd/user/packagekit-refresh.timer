@@ -1,0 +1,14 @@
+# Daily PackageKit metadata refresh — see packagekit-refresh.service for why.
+# Persistent= catches up after missed runs (machine off at midnight);
+# RandomizedDelaySec avoids every machine hitting the mirrors at 00:00:00.
+
+[Unit]
+Description=Daily PackageKit metadata refresh
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target
