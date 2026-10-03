@@ -21,7 +21,7 @@ to the personal machine profile so work machines are unaffected.
 |---|---|---|
 | 16:9 isolation | Dummy HDMI/DP plug in a spare GPU port; Sunshine KMS capture targets its connector | Real DRM connector → fastest (DMABUF) capture path, zero protocol risk, works on any GPU driver. User chose hardware after survey (see below). |
 | Rejected alternatives | Hyprland headless output; `video=DP-x:...e` + firmware EDID; krfb-virtual-monitor; gamescope; monitor mode switch; 32:9 letterbox | Headless: no DRM connector, capture fragile. Forced connector: always-on, driver-dependent, boot param. krfb: KWin/Plasma-only. Gamescope nested-on-Hyprland: flakiest pairing. Mode switch: touches main monitor. 32:9: 2x wasted encode. |
-| Stream resolution | Virtual output pinned to 1920x1080@60 | Latency-friendly; dongle EDID advertises 4K but the Hyprland monitor entry picks the mode. 4K later = one config value. Emulator internal upscaling is independent of output mode. |
+| Stream resolution | Virtual output pinned to 3840x2160@60 | 4K dongle + 4K TV + Shield's 4K/HEVC decode (the reason the Shield was chosen over the Pi 4). Needs a wired Shield connection for the ~100+ Mbps HEVC bitrate; 1080p remains a one-value fallback if latency disappoints. Emulator internal upscaling is independent of output mode. |
 | Session lifecycle | Persistent ES-DE; teardown on demand | Reconnect drops back into place. Prep is idempotent ensure, not create/teardown. A second Sunshine app "Emulation (Stop)" gives couch-side teardown. |
 | ROM access | systemd automount, CIFS from Nimbus at `/mnt/nimbus/roms` | `x-systemd.automount,nofail,soft` — down server never hangs boot or Sunshine; ES-DE just shows no systems. Chosen over NFS (share already speaks SMB). |
 | Saves/states | Local on host | Avoids CIFS locking/latency issues on write-heavy state. |
@@ -37,7 +37,7 @@ to the personal machine profile so work machines are unaffected.
 
 Wrap current content unchanged; add a personal-profile-gated emulation block:
 
-- Monitor entry for the dongle connector at `1920x1080@60`. The output
+- Monitor entry for the dongle connector at `3840x2160@60`. The output
   participates in Hyprland like any second monitor (pointer can
   edge-cross onto it — harmless given silent routing), but no window or
   focus ever lands there except via the rules below.
@@ -125,7 +125,8 @@ Moonlight "Emulation" (Shield)
    `emulation` ws on the dongle monitor; desktop focus unmoved.
 3. Script: `es-session.sh start` twice → one ES-DE PID; `status` output
    accurate; `stop` clears PIDs.
-4. Stream: Moonlight from Shield — 16:9 frame, KMS capture confirmed in
+4. Stream: Moonlight from Shield — 16:9 frame at 3840x2160 (Moonlight
+   stats overlay), KMS capture confirmed in
    Sunshine logs, audio/video/controller input working.
 5. Input: Select+Start exits each emulator back to ES-DE; L3+R3 opens
    the RetroArch menu.
@@ -144,10 +145,15 @@ Moonlight "Emulation" (Shield)
   Flatpak fallback documented if a package is missing/stale.
 - First ROM access after idle pays the automount penalty (seconds);
   acceptable, noted in runbook.
+- 4K60 HEVC encode assumes a host GPU encoder (NVENC/VAAPI) comfortable
+  at that rate; Shield must be on Ethernet. If either fails, the monitor
+  entry + Moonlight resolution drop to 1080p60 with no other changes.
 
 ## Out of scope
 
-- 4K/ HDR streaming (config value flip, nothing structural).
+- HDR streaming (HEVC main10 / TV tone mapping — separate can of worms;
+  revisit later).
+- 1080p fallback profile (documented one-liner, not built out).
 - Additional emulators beyond RetroArch/Dolphin/PCSX2 day one (the
   routing tables and configs are one-line extensions).
 - Any change to the working Steam streaming workflow.
