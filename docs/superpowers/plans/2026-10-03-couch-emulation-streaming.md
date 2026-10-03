@@ -12,6 +12,8 @@
 
 **Hardware dependency:** Tasks 1–5, the apps.json half of 7, 8, and 10 are executable before the dongle arrives. Tasks 6, the sunshine.conf half of 7, 9's verification, and 11 need the dongle plugged in (and a controller paired for input tests).
 
+
+> **Progress (2026-10-03, pre-dongle session):** Tasks 1, 2, 5, and 10 complete; Task 3 script committed (system steps pending creds file); Task 4 AppImage installed, dnf installs pending; Task 7 apps.json done and capture privileges verified (`cap_sys_admin` present) — KMS keys and client checks pending dongle; Task 8 config deployed, runtime checks pending RetroArch install. All deferred steps are in `docs/gaming/couch-emulation-streaming.md`. Work lives on branch `feature/couch-emulation-streaming`.
 ---
 
 ## File Structure
@@ -37,20 +39,20 @@ Convert `hyprland.lua` and `.chezmoiignore` to templates so later tasks can gate
 - Rename: `dot_config/hypr/hyprland.lua` → `dot_config/hypr/hyprland.lua.tmpl`
 - Rename: `.chezmoiignore` → `.chezmoiignore.tmpl`
 
-- [ ] **Step 1: Capture current rendered output**
+- [x] **Step 1: Capture current rendered output**
 
 ```bash
 mkdir -p /tmp/opencode && chezmoi cat ~/.config/hypr/hyprland.lua > /tmp/opencode/hyprland-before.lua
 ```
 
-- [ ] **Step 2: Rename both files**
+- [x] **Step 2: Rename both files**
 
 ```bash
 git mv dot_config/hypr/hyprland.lua dot_config/hypr/hyprland.lua.tmpl
 git mv .chezmoiignore .chezmoiignore.tmpl
 ```
 
-- [ ] **Step 3: Add the template header to hyprland.lua.tmpl**
+- [x] **Step 3: Add the template header to hyprland.lua.tmpl**
 
 Prepend exactly this above the existing first line:
 
@@ -60,7 +62,7 @@ Prepend exactly this above the existing first line:
    chezmoi.toml (opencode.json.tmpl precedent). */ -}}
 ```
 
-- [ ] **Step 4: Extend .chezmoiignore.tmpl**
+- [x] **Step 4: Extend .chezmoiignore.tmpl**
 
 Prepend the profile header at the very top:
 
@@ -96,7 +98,7 @@ Append at the very end:
 {{- end }}
 ```
 
-- [ ] **Step 5: Verify nothing changed**
+- [x] **Step 5: Verify nothing changed**
 
 ```bash
 chezmoi cat ~/.config/hypr/hyprland.lua | diff - /tmp/opencode/hyprland-before.lua
@@ -105,7 +107,7 @@ chezmoi execute-template < .chezmoiignore.tmpl | grep -c es-session
 
 Expected: diff exits 0 (no output); grep count is `0` (this machine is personal, so the exclusion block renders away).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "Convert hyprland config and chezmoiignore to templates"
@@ -118,7 +120,7 @@ git add -A && git commit -m "Convert hyprland config and chezmoiignore to templa
 **Files:**
 - Modify: `~/.config/chezmoi/chezmoi.toml` (not in the repo — never committed)
 
-- [ ] **Step 1: Add the nimbus table**
+- [x] **Step 1: Add the nimbus table**
 
 Append to `~/.config/chezmoi/chezmoi.toml` (replace `roms` with the actual Unraid share name if different):
 
@@ -127,7 +129,7 @@ Append to `~/.config/chezmoi/chezmoi.toml` (replace `roms` with the actual Unrai
   romsShare = "//Nimbus/roms"
 ```
 
-- [ ] **Step 2: Verify the variable resolves**
+- [x] **Step 2: Verify the variable resolves**
 
 ```bash
 chezmoi execute-template '{{ dig "nimbus" "romsShare" "" . }}'
@@ -150,7 +152,7 @@ sudo sh -c 'printf "username=YOUR_UNRAID_USER\npassword=YOUR_UNRAID_PASSWORD\n" 
 
 Expected: no output. (Add a `domain=WORKGROUP` line only if the Unraid share requires one.)
 
-- [ ] **Step 2: Write `run_once_install-nimbus-roms-mount.sh.tmpl`**
+- [x] **Step 2: Write `run_once_install-nimbus-roms-mount.sh.tmpl`**
 
 ```
 {{- if and (eq .chezmoi.os "linux") (eq (dig "machine" "profile" "" .) "personal") -}}
@@ -254,7 +256,7 @@ chezmoi apply
 
 Expected: no "installed" lines (units unchanged), still "automount ready".
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add run_once_install-nimbus-roms-mount.sh.tmpl && git commit -m "Add Nimbus ROM automount installer"
@@ -264,7 +266,7 @@ git add run_once_install-nimbus-roms-mount.sh.tmpl && git commit -m "Add Nimbus 
 
 ### Task 4: Install emulators and ES-DE (system state, no commit)
 
-- [ ] **Step 1: Verify package availability**
+- [x] **Step 1: Verify package availability**
 
 ```bash
 dnf info retroarch dolphin-emu pcsx2 2>&1 | grep -E '^(Name|Error)' 
@@ -295,7 +297,7 @@ dnf search libretro | head -40
 
 From the results, `sudo dnf install` the core packages whose names match the system folders in `/mnt/nimbus/roms` (e.g. `libretro-snes9u` for `snes/`, a Game Boy core for `gb/`/`gba/`). Record the installed package list for the runbook (Task 10).
 
-- [ ] **Step 5: Install ES-DE AppImage**
+- [x] **Step 5: Install ES-DE AppImage**
 
 Download the latest `ES-DE_x64.AppImage` from `https://gitlab.com/es-de/emulationstation-de/-/releases` (Steam Deck/package-agnostic asset) into `~/AppImages`:
 
@@ -314,7 +316,7 @@ Expected: version banner, clean exit. GearLever can manage updates afterwards (e
 **Files:**
 - Create: `dot_local/bin/executable_es-session`
 
-- [ ] **Step 1: Write `dot_local/bin/executable_es-session`**
+- [x] **Step 1: Write `dot_local/bin/executable_es-session`**
 
 Adjust `EMULATORS` to the binary names recorded in Task 4 Step 3 if they differ.
 
@@ -427,7 +429,7 @@ case "${1:-}" in
 esac
 ```
 
-- [ ] **Step 2: Apply and verify status paths**
+- [x] **Step 2: Apply and verify status paths**
 
 ```bash
 chezmoi apply
@@ -436,7 +438,7 @@ es-session status; echo "rc=$?"
 
 Expected (pre-dongle): `dongle: ABSENT`, `rom mount: mounted`, `es-de: not running`, `rc=1`. A desktop notification about the dongle may appear only from `start`, not `status`.
 
-- [ ] **Step 3: Verify the missing-binary guard**
+- [x] **Step 3: Verify the missing-binary guard**
 
 ```bash
 ESDE_BIN=/nonexistent es-session start; echo "rc=$?"
@@ -444,7 +446,7 @@ ESDE_BIN=/nonexistent es-session start; echo "rc=$?"
 
 Expected: `rc=4`, notification shown.
 
-- [ ] **Step 4: Verify launch idempotency and stop (post Task 4)**
+- [x] **Step 4: Verify launch idempotency and stop (post Task 4)**
 
 ```bash
 es-session start && sleep 2 && pgrep -x es-de
@@ -454,7 +456,7 @@ es-session stop && sleep 1; pgrep -x es-de || echo "es-de gone"
 
 Expected: first `start` produces one PID; second `start` keeps the same PID (no relaunch); `stop` clears it ("es-de gone"). Note the ES-DE window will appear on the current workspace until Task 6's routing exists — close it with the pointer for now.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dot_local/bin/executable_es-session && git commit -m "Add es-session session manager"
@@ -572,13 +574,13 @@ git add dot_config/hypr/hyprland.lua.tmpl && git commit -m "Add Hyprland emulati
 **Files:**
 - Create: `dot_config/sunshine/apps.json`
 
-- [ ] **Step 1: Bring the live file under chezmoi management**
+- [x] **Step 1: Bring the live file under chezmoi management**
 
 ```bash
 chezmoi add ~/.config/sunshine/apps.json
 ```
 
-- [ ] **Step 2: Edit `dot_config/sunshine/apps.json` to the final content**
+- [x] **Step 2: Edit `dot_config/sunshine/apps.json` to the final content**
 
 Drops the stock `xrandr` "Low Res Desktop" entry (dead on Wayland); preserves Desktop + Steam Big Picture; adds the emulation apps:
 
@@ -621,7 +623,7 @@ Drops the stock `xrandr` "Low Res Desktop" entry (dead on Wayland); preserves De
 }
 ```
 
-- [ ] **Step 3: Apply and verify Sunshine parsed it**
+- [x] **Step 3: Apply and verify Sunshine parsed it**
 
 ```bash
 chezmoi apply
@@ -650,7 +652,7 @@ output_name = card1-HDMI-A-1
 
 (substituting the observed connector).
 
-- [ ] **Step 5: Verify capture privileges survive**
+- [x] **Step 5: Verify capture privileges survive**
 
 ```bash
 getcap "$(readlink -f "$(command -v sunshine)")"
@@ -662,7 +664,7 @@ Expected: includes `cap_sys_admin`. If empty, run `sudo setcap cap_sys_admin+p <
 
 On the Shield, open Moonlight → this host: the app grid shows Emulation entries. (Streaming quality is Task 11.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add dot_config/sunshine/apps.json && git commit -m "Manage Sunshine apps with emulation entries"
@@ -675,7 +677,7 @@ git add dot_config/sunshine/apps.json && git commit -m "Manage Sunshine apps wit
 **Files:**
 - Create: `dot_config/retroarch/retroarch.cfg`
 
-- [ ] **Step 1: Write `dot_config/retroarch/retroarch.cfg`**
+- [x] **Step 1: Write `dot_config/retroarch/retroarch.cfg`**
 
 ```ini
 # Managed by chezmoi. Runtime saves are disabled so this file stays as
@@ -717,7 +719,7 @@ Expected: RetroArch appears as a client on workspace `emulation` (the dongle out
 
 With a paired controller (USB locally, or through a Moonlight test stream), in the RetroArch menu: L3+R3 toggles the menu; Select(hold)+Start quits the process. If the combo values differ on this build, correct them here and note the working values in the runbook.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add dot_config/retroarch/retroarch.cfg && git commit -m "Add RetroArch streaming config"
@@ -754,11 +756,11 @@ Launch one GameCube game and one PS2 game from the ES-DE grid (streamed or local
 **Files:**
 - Create: `docs/gaming/couch-emulation-streaming.md`
 
-- [ ] **Step 1: Write the runbook**
+- [x] **Step 1: Write the runbook**
 
 Cover, in this order: overview diagram (Shield → Moonlight → Sunshine → dongle output → emulation ws); one-time setup in dependency order (creds file, chezmoi.toml `[data.nimbus]`, dnf packages, ES-DE AppImage, `chezmoi apply`, dongle + sunshine.conf keys with the exact discovery commands from Tasks 6–7, `setcap` note, ES-DE first-run wizard pointing at `/mnt/nimbus/roms`, the Task 9 click-paths); daily operation (Moonlight "Emulation" / "Emulation (Stop)"); troubleshooting matrix (stream fails → `es-session status` + `output_name`; no systems in ES-DE → mount; window on wrong screen → class regex; no input → Moonlight input settings); maintenance (Sunshine updates reset capabilities, dongle desc changes, 4K↔1080p = hyprland mode value + Moonlight host resolution); which files are managed vs runtime.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/gaming/couch-emulation-streaming.md && git commit -m "Add couch emulation runbook"
