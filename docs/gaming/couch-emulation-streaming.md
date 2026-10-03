@@ -80,8 +80,13 @@ has recorded its hash — creating the creds file later and re-applying
 will NOT re-run it. Render and install the units directly:
 
 ```bash
-chezmoi execute-template < "$(chezmoi source-path)/run_once_install-nimbus-roms-mount.sh.tmpl" | sudo bash
+chezmoi execute-template < "$(chezmoi source-path)/run_once_install-nimbus-roms-mount.sh.tmpl" | bash
 ```
+
+Pipe to plain `bash`, not `sudo bash` — under `sudo` the script's
+`MY_UID`/`MY_GID` resolve to root (0) and the CIFS mount would land
+root-owned; the script already uses `sudo` internally where needed, so
+`id -u` must see the invoking user.
 
 Then verify. Chezmoi swallows successful `run_once` output, so never
 rely on seeing (or not seeing) a skip message — always check the unit
@@ -411,6 +416,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | Symptom | Diagnose | Fix |
 |---|---|---|
 | Stream fails / black screen | `es-session status` (dongle row); `~/.config/sunshine/sunshine.log` | Dongle must be present; `output_name` in `~/.config/sunshine/sunshine.conf` must match a `connected` connector — re-run the `/sys/class/drm` discovery loop in 4.2; check `getcap` on the sunshine binary; restart `app-dev.lizardbyte.app.Sunshine.service` |
+| Stream connects but workspace is empty / ES-DE not running | Sunshine's user-service environment is snapshotted at service start and may lack `WAYLAND_DISPLAY` when enabled for autostart before the Hyprland session imports its env; check `systemctl --user show-environment \| grep WAYLAND_DISPLAY` | `systemctl --user restart app-dev.lizardbyte.app.Sunshine.service` |
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check `/etc/cifs-creds-nimbus` exists (mode 600); check Nimbus is powered on |
 | Emulator window shows on the desktop, not in the stream | `hyprctl -j clients` — compare the reported class against the `emulationWindows` regexes | Correct the class regex in `dot_config/hypr/hyprland.lua.tmpl` and `chezmoi apply` |
 | No controller input in the stream | Moonlight's per-host settings on the Shield | Input must be enabled for this host in Moonlight settings; verify the combos work locally over USB first to isolate host vs client |
