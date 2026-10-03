@@ -47,7 +47,7 @@ Wrap current content unchanged; add a personal-profile-gated emulation block:
   `^retroarch$`, Dolphin, PCSX2 classes — verified via `hyprctl`
   `initialClass` at implementation; all routed `emulation silent`.
 
-### 2. `dot_local/bin/executable_es-session.sh` (new)
+### 2. `dot_local/bin/executable_es-session` (new)
 
 `start|stop|status`, idempotent:
 
@@ -68,10 +68,12 @@ committed). Share name is a chezmoi data variable.
 
 ### 4. `dot_config/sunshine/apps.json` (new, managed whole)
 
-Existing entries preserved; adds:
+Existing working entries preserved (the stock X11 `xrandr` "Low Res
+Desktop" relic is dead on Wayland and gets dropped); adds:
 
-- "Emulation": `detached = es-session.sh start`, cover art `emu.png`.
-- "Emulation (Stop)": `detached = es-session.sh stop`.
+- "Emulation": `detached = es-session start` (no cover-art file
+  dependency; Sunshine's default icon).
+- "Emulation (Stop)": `detached = es-session stop`.
 
 ### 5. Emulator configs (new, chezmoi-managed)
 
@@ -79,15 +81,17 @@ Existing entries preserved; adds:
   toggle, fullscreen on the dongle output, latency settings
   (`video_hard_sync` et al., exact set tuned during implementation),
   Vulkan driver.
-- Dolphin `Hotkeys/Qt.ini` fragments: fullscreen + exit hotkey mapped to
-  the same combo.
-- PCSX2 ini equivalents.
-- Per-game state (memcards, saves, ES-DE `gamelists.xml`/cache) stays out
-  of git per `.chezmoiignore` conventions.
+- Dolphin/PCSX2: fullscreen + exit hotkeys are configured through each
+  emulator's settings UI, with exact click-paths in the runbook — their
+  ini hotkey tokens encode device-specific controller button IDs, which
+  makes seeded config files unreliable. Runtime-mutated inis stay out of
+  git per `.chezmoiignore` conventions.
 
 ### 6. ES-DE config + runbook (new)
 
-- `es_settings.xml`: ROM directory → `/mnt/nimbus/roms`.
+- `es_settings.xml` is runtime-mutated by ES-DE (scraper, UI settings),
+  so it is not chezmoi-managed; the ROM directory is pointed at
+  `/mnt/nimbus/roms` via ES-DE's first-run wizard.
 - `docs/` runbook: package install commands, GearLever AppImage import,
   the two manual `sunshine.conf` keys with the connector name discovered
   from `hyprctl monitors`, pairing notes.
