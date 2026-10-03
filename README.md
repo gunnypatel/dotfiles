@@ -22,9 +22,12 @@ XDG (no files in `$HOME`).
 | `~/.config/fish/functions/*.fish` | custom fish functions |
 | `~/.config/nvim/init.lua` | Neovim config (kickstart-inspired, single-file, `vim.pack`) |
 | `~/.config/nvim/nvim-pack-lock.json` | pinned plugin versions (committed after first launch) |
-| `~/.config/hypr/hyprland.lua` | Hyprland compositor config (Lua format; monitors, binds, rules) |
+| `~/.config/hypr/hyprland.lua` | Hyprland compositor config (Lua; source `hyprland.lua.tmpl` — emulation routing gated on the personal profile) |
 | `~/.config/noctalia/config.toml` | Noctalia shell seed config (theme, idle, polkit agent) |
 | `~/.config/ghostty/config` | Ghostty terminal (catppuccin mocha, JetBrainsMono Nerd Font) |
+| `~/.local/bin/es-session` | Couch-emulation session manager (personal profile only) |
+| `~/.config/sunshine/apps.json` | Sunshine app grid incl. Emulation entries (personal only) |
+| `~/.config/retroarch/retroarch.cfg` | RetroArch streaming defaults (personal only) |
 
 The tmux plugin install location is centralized in `tmux.conf.local` as `@plugin_dir`
 and referenced via `#{@plugin_dir}` — change it in one place to move plugins.
@@ -257,16 +260,25 @@ dotfiles/                                    # chezmoi source dir
 │   └── nvim/
 │       └── init.lua                         # kickstart-inspired single-file config (vim.pack)
 │   ├── hypr/
-│   │   └── hyprland.lua                     # compositor config (monitors, binds, rules, autostart)
+│   │   └── hyprland.lua.tmpl                # compositor config; .tmpl gates emulation
+│   │                                        #   additions on the personal profile
 │   ├── noctalia/
 │   │   └── config.toml                      # shell seed: theme, idle, polkit
-│   └── ghostty/
-│       └── config                           # terminal: theme, font, keybind
+│   ├── ghostty/
+│   │   └── config                           # terminal: theme, font, keybind
+│   ├── sunshine/
+│   │   └── apps.json                        # stream host app grid (personal only)
+│   └── retroarch/
+│       └── retroarch.cfg                    # streaming defaults (personal only)
 ├── dot_local/
 │   └── bin/
-│       └── executable_tmux-sessionizer      # +x via chezmoi prefix
+│       ├── executable_tmux-sessionizer      # +x via chezmoi prefix
+│       └── executable_es-session            # couch-emulation session manager
 ├── run_once_bootstrap-fisher.sh             # Fisher + plugins + tide theme
-└── run_once_bootstrap-tmux-plugins.sh       # clones TPM + installs plugins
+├── run_once_bootstrap-tmux-plugins.sh       # clones TPM + installs plugins
+├── run_once_install-resolved-conf.sh.tmpl   # systemd-resolved drop-in (root)
+├── run_once_install-packagekit-timeout.sh.tmpl # PackageKit timer drop-in (root)
+└── run_once_install-nimbus-roms-mount.sh.tmpl  # CIFS ROM automount (personal)
 ```
 
 **Why it's portable:** the only machine-specific path is resolved at `apply`
