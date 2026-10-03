@@ -231,7 +231,7 @@ Discover the dongle's DRM connector name:
 
 ```bash
 for c in /sys/class/drm/card*-HDMI-* /sys/class/drm/card*-DP-*; do
-  echo "$(basename "$c"): $(cat "$c/status")"
+  echo "$(basename "$c"): $(cat "$c/status" 2>/dev/null)"
 done
 ```
 
@@ -249,6 +249,7 @@ output_name = card1-HDMI-A-1
 Verify capture privileges:
 
 ```bash
+command -v sunshine >/dev/null || echo "sunshine not on PATH — check the Sunshine install before continuing"
 getcap "$(readlink -f "$(command -v sunshine)")"
 ```
 
@@ -257,8 +258,24 @@ Expect `cap_sys_admin`. If empty, run
 because package updates can reset it.
 
 The user service is **`app-dev.lizardbyte.app.Sunshine.service`** —
-NOT `sunshine.service`; use the real name for every restart/enable. It
-is currently DISABLED for autostart, so enable it once:
+NOT `sunshine.service`. Despite the name, this is NOT a Flatpak:
+Sunshine is installed as a native RPM
+(`Sunshine-2026.516.143833-1.fc44.x86_64` owns `/usr/bin/sunshine`),
+and the RPM itself ships the unit at
+`/usr/lib/systemd/user/app-dev.lizardbyte.app.Sunshine.service`
+(`ExecStart=/usr/bin/sunshine`) — the unit name merely looks
+reversed-DNS/Flatpak-style. Config lives at the native path
+`~/.config/sunshine/`. Discover the actual unit name before acting on
+it, and re-verify these facts if Sunshine is ever reinstalled (e.g. as
+a Flatpak, which would change all of them):
+
+```bash
+systemctl --user list-units | grep -i sunshine
+# expected: an app-dev.lizardbyte.app.Sunshine.service ... line
+```
+
+It is currently DISABLED for autostart, so enable it once (use the
+discovered name):
 
 ```bash
 systemctl --user enable --now app-dev.lizardbyte.app.Sunshine.service
@@ -288,7 +305,7 @@ First launch must use the Wayland context, not SDL — Vulkan ICD issues
 on the dongle GPU would surface here:
 
 ```bash
-retroarch --verbose --menu & sleep 4; kill %1
+retroarch --verbose --menu & sleep 4; pkill -x retroarch
 ```
 
 Check the context driver in the verbose output (wayland expected). Then
@@ -406,6 +423,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
   `cap_sys_admin`, breaking KMS capture. Re-check and re-apply:
 
   ```bash
+  command -v sunshine >/dev/null || echo "sunshine not on PATH — check the Sunshine install before continuing"
   getcap "$(readlink -f "$(command -v sunshine)")"
   sudo setcap cap_sys_admin+p "$(readlink -f "$(command -v sunshine)")"
   ```
@@ -426,7 +444,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
   immediately with:
 
   ```bash
-  sudo systemctl restart mnt-nimbus-roms.automount
+  sudo systemctl stop mnt-nimbus-roms.automount mnt-nimbus-roms.mount && sudo systemctl start mnt-nimbus-roms.automount
   ```
 
 - **RetroArch config recovery:** RetroArch's Main Menu → Save Config
