@@ -19,11 +19,12 @@ notify() {
 }
 
 dongle_present() {
+    [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || return 1
     hyprctl -j monitors | python3 -c '
 import json, sys
 needle = sys.argv[1].lower()
 found = any(needle in m.get("description", "").lower() for m in json.load(sys.stdin))
-sys.exit(0 if found else 1)' "$DONGLE_DESC"
+sys.exit(0 if found else 1)' "$DONGLE_DESC" 2>/dev/null
 }
 
 mount_present() {
