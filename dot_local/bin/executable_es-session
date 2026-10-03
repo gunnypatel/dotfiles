@@ -1,0 +1,106 @@
+#!/bin/sh
+# Couch-emulation session manager (Sunshine "Emulation" apps):
+#   start    idempotently ensure ES-DE is running (persistent between
+#            streams — reconnect resumes where you left off)
+#   stop     terminate any running emulators, then ES-DE (on demand)
+#   status   report dongle connector / ROM mount / processes
+# Exit codes: 2 usage; 4 ES-DE binary missing. Dongle/mount absence is a
+# warning (notification), never fatal — ES-DE still launches locally.
+# See docs/superpowers/specs/2026-10-03-couch-emulation-streaming-design.md
+set -eu
+
+ESDE_BIN="${ESDE_BIN:-$HOME/AppImages/es-de.AppImage}"
+MOUNT_POINT=/mnt/nimbus/roms
+DONGLE_DESC="${DONGLE_DESC:-dummy}"
+EMULATORS="retroarch dolphin-emu pcsx2-qt"
+
+notify() {
+    noctalia msg notification-show "$1" "$2" 2>/dev/null || true
+}
+
+dongle_present() {
+    hyprctl -j monitors | python3 -c '
+import json, sys
+needle = sys.argv[1].lower()
+found = any(needle in m.get("description", "").lower() for m in json.load(sys.stdin))
+sys.exit(0 if found else 1)' "$DONGLE_DESC"
+}
+
+mount_present() {
+    findmnt -rn "$MOUNT_POINT" >/dev/null
+}
+
+emus_running() {
+    for p in $EMULATORS; do
+        pgrep -x "$p" >/dev/null && return 0
+    done
+    return 1
+}
+
+cmd_start() {
+    dongle_present || notify "Emulation" "Dongle output not found (desc ~ '$DONGLE_DESC')"
+    mount_present || notify "Emulation" "ROM mount $MOUNT_POINT not mounted"
+    if pgrep -x es-de >/dev/null; then
+        exit 0
+    fi
+    if [ ! -x "$ESDE_BIN" ]; then
+        notify "Emulation" "ES-DE not found: $ESDE_BIN"
+        echo "es-session: ES-DE binary missing: $ESDE_BIN" >&2
+        exit 4
+    fi
+    setsid -f "$ESDE_BIN" >/dev/null 2>&1
+}
+
+wait_gone() {  # wait_gone PATTERN — up to 5s for all matches to exit
+    i=0
+    while pgrep -x "$1" >/dev/null && [ "$i" -lt 50 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+}
+
+cmd_stop() {
+    for p in $EMULATORS; do
+        pkill -x -TERM "$p" 2>/dev/null || true
+    done
+    for p in $EMULATORS; do
+        wait_gone "$p"
+        pkill -x -KILL "$p" 2>/dev/null || true
+    done
+    pkill -x -TERM es-de 2>/dev/null || true
+    wait_gone es-de
+    pkill -x -KILL es-de 2>/dev/null || true
+    notify "Emulation" "Session stopped"
+}
+
+cmd_status() {
+    rc=0
+    if dongle_present; then
+        echo "dongle:    present"
+    else
+        echo "dongle:    ABSENT (description must contain: $DONGLE_DESC)"
+        rc=1
+    fi
+    if mount_present; then
+        echo "rom mount: mounted ($MOUNT_POINT)"
+    else
+        echo "rom mount: not mounted"
+        rc=1
+    fi
+    if pgrep -x es-de >/dev/null; then
+        echo "es-de:     running ($(pgrep -x es-de | tr '\n' ' '))"
+    else
+        echo "es-de:     not running"
+    fi
+    for p in $EMULATORS; do
+        pgrep -x "$p" >/dev/null && echo "$p: running ($(pgrep -x "$p" | tr '\n' ' '))"
+    done
+    exit "$rc"
+}
+
+case "${1:-}" in
+    start)  cmd_start ;;
+    stop)   cmd_stop ;;
+    status) cmd_status ;;
+    *) echo "usage: es-session start|stop|status" >&2; exit 2 ;;
+esac
