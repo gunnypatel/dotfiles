@@ -1,3 +1,8 @@
+{{- /* Personal-machine gating: the emulation streaming stack (see
+   docs/superpowers/specs/2026-10-03-couch-emulation-streaming-design.md)
+   is excluded on machines whose [data.machine] profile is not
+   "personal", mirroring the opencode.json.tmpl freecad gate. */ -}}
+{{- $profile := dig "machine" "profile" "" . -}}
 # Repo metadata / source material — NOT dotfiles to install into $HOME.
 # (chezmoi auto-ignores .git/, .gitmodules, and its own control files.)
 
@@ -57,3 +62,22 @@ submodules
 
 # ghostty: config is managed; window-save-state runtime data is not.
 .local/state/ghostty
+
+# sunshine: apps.json is managed; state/log/credentials are Sunshine's own
+.config/sunshine/sunshine_state.json
+.config/sunshine/sunshine.log
+.config/sunshine/credentials
+
+# retroarch: retroarch.cfg is managed; runtime state is not
+.config/retroarch/saves
+.config/retroarch/states
+.config/retroarch/playlists
+.config/retroarch/thumbnails
+.config/retroarch/autoconfig
+
+{{- if ne $profile "personal" }}
+# Personal-only emulation stack (never applied to work machines)
+.local/bin/es-session
+.config/retroarch/retroarch.cfg
+.config/sunshine/apps.json
+{{- end }}
