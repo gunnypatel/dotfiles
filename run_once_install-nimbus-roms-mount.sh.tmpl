@@ -6,22 +6,20 @@
 # changes; editing this script changes its hash, so chezmoi re-runs it.
 #
 # Prerequisites (see docs/gaming/couch-emulation-streaming.md):
-#   - /etc/cifs-creds-nimbus (chmod 600, created manually)
 #   - [data.nimbus] romsShare = "//Nimbus/roms" in chezmoi.toml
+#
+# The share is public/guest on the LAN — no credentials file. If auth
+# is ever enabled on the share, add a credentials file and restore
+# `credentials=` in the mount Options below.
 set -euo pipefail
 
 SHARE='{{ dig "nimbus" "romsShare" "" . }}'
-CREDS=/etc/cifs-creds-nimbus
 MP=/mnt/nimbus/roms
 MY_UID=$(id -u)
 MY_GID=$(id -g)
 
 if [[ -z "$SHARE" ]]; then
     echo "chezmoi: nimbus.romsShare not set — skipping ROM mount install"
-    exit 0
-fi
-if [[ ! -f "$CREDS" ]]; then
-    echo "chezmoi: missing $CREDS — create it, then re-run: chezmoi apply"
     exit 0
 fi
 
@@ -36,7 +34,7 @@ Description=Nimbus ROM library (CIFS)
 What=$SHARE
 Where=$MP
 Type=cifs
-Options=credentials=$CREDS,uid=$MY_UID,gid=$MY_GID,file_mode=0644,dir_mode=0755,soft,nofail,_netdev
+Options=guest,uid=$MY_UID,gid=$MY_GID,file_mode=0644,dir_mode=0755,soft,nofail,_netdev
 TimeoutSec=30
 
 [Install]
