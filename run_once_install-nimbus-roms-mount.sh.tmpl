@@ -1,0 +1,73 @@
+{{- if and (eq .chezmoi.os "linux") (eq (dig "machine" "profile" "" .) "personal") -}}
+#!/usr/bin/env bash
+# Install the systemd automount for the Nimbus ROM share (CIFS) at
+# /mnt/nimbus/roms. Renders to nothing (not executed) on non-personal or
+# non-Linux machines. Idempotent: units are only rewritten when content
+# changes; editing this script changes its hash, so chezmoi re-runs it.
+#
+# Prerequisites (see docs/gaming/couch-emulation-streaming.md):
+#   - /etc/cifs-creds-nimbus (chmod 600, created manually)
+#   - [data.nimbus] romsShare = "//Nimbus/roms" in chezmoi.toml
+set -euo pipefail
+
+SHARE='{{ dig "nimbus" "romsShare" "" . }}'
+CREDS=/etc/cifs-creds-nimbus
+MP=/mnt/nimbus/roms
+MY_UID=$(id -u)
+MY_GID=$(id -g)
+
+if [[ -z "$SHARE" ]]; then
+    echo "chezmoi: nimbus.romsShare not set — skipping ROM mount install"
+    exit 0
+fi
+if [[ ! -f "$CREDS" ]]; then
+    echo "chezmoi: missing $CREDS — create it, then re-run: chezmoi apply"
+    exit 0
+fi
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+cat > "$TMP/mnt-nimbus-roms.mount" <<EOF
+[Unit]
+Description=Nimbus ROM library (CIFS)
+
+[Mount]
+What=$SHARE
+Where=$MP
+Type=cifs
+Options=credentials=$CREDS,uid=$MY_UID,gid=$MY_GID,file_mode=0644,dir_mode=0755,soft,nofail,__netdev
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > "$TMP/mnt-nimbus-roms.automount" <<EOF
+[Unit]
+Description=Automount Nimbus ROM library on access
+
+[Automount]
+Where=$MP
+TimeoutIdleSec=600
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+TOUCHED=0
+for unit in mnt-nimbus-roms.mount mnt-nimbus-roms.automount; do
+    if cmp -s "/etc/systemd/system/$unit" "$TMP/$unit" 2>/dev/null; then
+        continue
+    fi
+    sudo install -m 0644 -o root -g root "$TMP/$unit" "/etc/systemd/system/$unit"
+    echo "chezmoi: installed $unit"
+    TOUCHED=1
+done
+
+if [[ "$TOUCHED" == 1 ]]; then
+    sudo systemctl daemon-reload
+fi
+sudo systemctl enable --now mnt-nimbus-roms.automount
+echo "chezmoi: ROM automount ready at $MP"
+{{- end -}}
