@@ -40,32 +40,6 @@ grid; L3+R3 opens the RetroArch menu. Dropping the stream changes
 nothing on the host (ES-DE persists between streams); **Emulation
 (Stop)** tears the session down on demand.
 
-## Daily operation
-
-From the couch (Shield):
-
-- **Moonlight → this host → "Emulation"** — starts or resumes the
-  ES-DE session. Reconnecting after dropping the stream resumes exactly
-  where you left off.
-- **Moonlight → "Emulation (Stop)"** — terminates any running emulators,
-  then ES-DE. Leaving the session running is also fine (persistent by
-  design).
-
-From the host:
-
-```bash
-es-session status   # dongle / ROM mount / process report (rc=1 if dongle or mount down)
-es-session start    # idempotent ensure-running
-es-session stop     # SIGTERM emulators, then ES-DE (SIGKILL after timeout)
-```
-
-Exit codes: `2` usage, `4` ES-DE binary missing. Dongle or mount
-absence is a warning (desktop notification from `start`), never fatal —
-ES-DE still launches locally. The process comm is exactly `es-de` (the
-inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
-`pgrep -x es-de` is the reliable check. ES-DE logs live at
-`~/ES-DE/logs/es_log.txt`.
-
 ## One-time setup
 
 ### Already in place on this machine
@@ -386,6 +360,34 @@ Each step must pass before the next:
 7. **Teardown** — run "Emulation (Stop)" from Moonlight: emulator +
    ES-DE processes gone (`es-session status` shows not running), host
    desktop untouched throughout.
+
+## Daily operation
+
+Everything referenced here is configured in "One-time setup" above.
+
+From the couch (Shield):
+
+- **Moonlight → this host → "Emulation"** — starts or resumes the
+  ES-DE session. Reconnecting after dropping the stream resumes exactly
+  where you left off.
+- **Moonlight → "Emulation (Stop)"** — terminates any running emulators,
+  then ES-DE. Leaving the session running is also fine (persistent by
+  design).
+
+From the host:
+
+```bash
+es-session status   # dongle / ROM mount / process report (rc=1 if dongle or mount down)
+es-session start    # idempotent ensure-running
+es-session stop     # SIGTERM emulators, then ES-DE (SIGKILL after timeout)
+```
+
+Exit codes: `2` usage, `4` ES-DE binary missing. Dongle or mount
+absence is a warning (desktop notification from `start`), never fatal —
+ES-DE still launches locally. The process comm is exactly `es-de` (the
+inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
+`pgrep -x es-de` is the reliable check. ES-DE logs live at
+`~/ES-DE/logs/es_log.txt`.
 
 ## Troubleshooting
 
