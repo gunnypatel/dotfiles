@@ -31,13 +31,6 @@ mount_present() {
     findmnt -rn "$MOUNT_POINT" >/dev/null
 }
 
-emus_running() {
-    for p in $EMULATORS; do
-        pgrep -x "$p" >/dev/null && return 0
-    done
-    return 1
-}
-
 cmd_start() {
     dongle_present || notify "Emulation" "Dongle output not found (desc ~ '$DONGLE_DESC')"
     mount_present || notify "Emulation" "ROM mount $MOUNT_POINT not mounted"
