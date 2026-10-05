@@ -220,7 +220,13 @@ hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. g
 -- Keep the gaming workspace alive even when empty and unfocused: without
 -- this, Hyprland destroys it when its last window closes (e.g. Steam
 -- restart), and the routing rules above then silently miss their target.
-hl.workspace_rule({ workspace = "name:" .. gamingWs, persistent = true })
+-- Personal machines also pin it to the 57": a new output claims the last
+-- unpinned workspace, so the dongle would otherwise steal gaming.
+hl.workspace_rule({
+    workspace  = "name:" .. gamingWs,
+    persistent = true,{{ if eq $profile "personal" }}
+    monitor    = "desc:Samsung Electric Company Odyssey G95NC HNTX501572",{{ end }}
+})
 
 for i, entry in ipairs(gamingWindows) do
     hl.window_rule({
