@@ -10,12 +10,12 @@
         {
             "name": "Steam Big Picture",
             "detached": [
-                "setsid steam steam://open/bigpicture"
+                "setsid flatpak run com.valvesoftware.Steam steam://open/bigpicture"
             ],
             "prep-cmd": [
                 {
                     "do": "",
-                    "undo": "setsid steam steam://close/bigpicture"
+                    "undo": "setsid flatpak run com.valvesoftware.Steam steam://close/bigpicture"
                 }
             ],
             "image-path": "steam.png"
