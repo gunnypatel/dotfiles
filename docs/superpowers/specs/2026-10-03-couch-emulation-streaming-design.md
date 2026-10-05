@@ -30,6 +30,7 @@ to the personal machine profile so work machines are unaffected.
 | Chezmoi gating | `[data.machine] profile = "personal"` (opencode.json.tmpl precedent) | hyprland.lua becomes `.tmpl` with the emulation block conditional; new files excluded on other machines via templated `.chezmoiignore`. |
 | Sunshine config ownership | `apps.json` chezmoi-managed whole (existing entries preserved); `sunshine.conf` stays hand-managed | Working Steam capture config is too valuable to clobber; runbook documents the two manual keys (`capture = kms`, `output_name`). |
 | Hyprland routing | New persistent `emulation` workspace bound to the dongle monitor; new `emulationWindows` table | Mirrors the existing `gamingWs`/`gamingWindows` pattern; Steam workflow untouched; apps arrive silently so desktop focus never moves. |
+| Couch revision (2026-10-04) | `emulation` ws renamed `couch`; SUPER+SHIFT+E toggles it dongle ↔ 57"; new "Steam (Couch)" app installs a session-scoped runtime rule (`hyprctl keyword windowrule` routing `steam`/`steam_app_*` → couch) and drops it via `hyprctl reload` on exit | Static rules can't distinguish couch-launched Steam games from locally-launched ones (identical window classes), so origin-based routing must be dynamic and session-scoped. Rename reflects that the dongle workspace hosts more than emulation. |
 
 ## Components
 
@@ -41,11 +42,13 @@ Wrap current content unchanged; add a personal-profile-gated emulation block:
   participates in Hyprland like any second monitor (pointer can
   edge-cross onto it — harmless given silent routing), but no window or
   focus ever lands there except via the rules below.
-- `hl.workspace_rule({ workspace = "name:emulation", persistent = true })`
+- `hl.workspace_rule({ workspace = "name:couch", persistent = true })`
   bound to the dongle monitor.
 - `emulationWindows` table (same shape as `gamingWindows`): `^es-de$`,
   `^retroarch$`, Dolphin, PCSX2 classes — verified via `hyprctl`
-  `initialClass` at implementation; all routed `emulation silent`.
+  `initialClass` at implementation; all routed `couch silent`.
+- SUPER+SHIFT+E toggle: moves `name:couch` between the dongle and the
+  Samsung for local play (dongle keeps its empty default while local).
 
 ### 2. `dot_local/bin/executable_es-session` (new)
 
@@ -74,6 +77,11 @@ Desktop" relic is dead on Wayland and gets dropped); adds:
 - "Emulation": `detached = es-session start` (no cover-art file
   dependency; Sunshine's default icon).
 - "Emulation (Stop)": `detached = es-session stop`.
+- "Steam (Couch)": `prep-cmd` `do` installs the runtime window rule
+  (`steam`/`steam_app_*` → couch silent) then detaches
+  `steam steam://open/bigpicture`; `prep-cmd` `undo` closes Big Picture
+  and runs `hyprctl reload` to drop the runtime rule. The pre-existing
+  "Steam Big Picture" entry is preserved unchanged for local/desktop use.
 
 ### 5. Emulator configs (new, chezmoi-managed)
 
@@ -102,13 +110,19 @@ Desktop" relic is dead on Wayland and gets dropped); adds:
 Moonlight "Emulation" (Shield)
   → Sunshine session → detached es-session.sh start
   → connector check / mount warn / pgrep-or-launch ES-DE
-  → window rule routes ES-DE to emulation ws on dongle (silent)
+  → window rule routes ES-DE to couch ws on dongle (silent)
   → Sunshine KMS capture of dongle connector only → HEVC stream
   → play: ES-DE launches RetroArch/Dolphin/PCSX2 → same routing
   → exit: Select+Start → emulator quits → ES-DE regains focus
   → disconnect stream: nothing changes on host (persistent)
   → reconnect: same ES-DE state, resume
   → "Emulation (Stop)" app: es-session.sh stop → clean teardown
+
+Moonlight "Steam (Couch)" (Shield)
+  → Sunshine session → prep-cmd installs runtime rule → Big Picture opens
+  → rule routes steam + steam_app_* windows to couch ws (silent)
+  → games launched from Big Picture land on the dongle too
+  → session end: undo closes Big Picture + hyprctl reload drops the rule
 ```
 
 ## Error handling
@@ -126,7 +140,7 @@ Moonlight "Emulation" (Shield)
 1. Automount: `ls /mnt/nimbus/roms` after idle boot mounts on access;
    boot with Nimbus off completes normally.
 2. Routing: launch ES-DE locally, `hyprctl -j clients` shows it on
-   `emulation` ws on the dongle monitor; desktop focus unmoved.
+   `couch` ws on the dongle monitor; desktop focus unmoved.
 3. Script: `es-session.sh start` twice → one ES-DE PID; `status` output
    accurate; `stop` clears PIDs.
 4. Stream: Moonlight from Shield — 16:9 frame at 3840x2160 (Moonlight
@@ -135,6 +149,10 @@ Moonlight "Emulation" (Shield)
 5. Input: Select+Start exits each emulator back to ES-DE; L3+R3 opens
    the RetroArch menu.
 6. Persistence: drop stream, reconnect → same ES-DE state.
+7. Couch toggle: bind moves `couch` ws to the Samsung and back; gaming
+   ws stays on DP-5. Steam (Couch): with the runtime rule installed,
+   steam/steam_app windows open on couch; after undo + reload they open
+   on gaming again.
 
 ## Risks / assumptions
 
@@ -152,6 +170,11 @@ Moonlight "Emulation" (Shield)
 - 4K60 HEVC encode assumes a host GPU encoder (NVENC/VAAPI) comfortable
   at that rate; Shield must be on Ethernet. If either fails, the monitor
   entry + Moonlight resolution drop to 1080p60 with no other changes.
+- Steam (Couch) relies on Sunshine running `undo` on session end; a hard
+  client drop leaves a stale runtime rule that the next `hyprctl reload`
+  (or any config apply) clears. A mid-session manual reload drops the
+  rule early — subsequently launched couch games land on gaming until
+  the session restarts.
 
 ## Out of scope
 
@@ -160,6 +183,7 @@ Moonlight "Emulation" (Shield)
 - 1080p fallback profile (documented one-liner, not built out).
 - Additional emulators beyond RetroArch/Dolphin/PCSX2 day one (the
   routing tables and configs are one-line extensions).
-- Any change to the working Steam streaming workflow.
+- Changes to the existing Steam streaming workflow (the "Steam (Couch)"
+  entry is purely additive).
 - Shield-side configuration beyond stock Moonlight.
 - ES-DE scraping/themes, netplay, achievements.

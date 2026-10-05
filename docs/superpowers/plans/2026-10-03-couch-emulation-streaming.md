@@ -780,18 +780,23 @@ Mirrors the spec's Testing section. Each step must pass before the next.
 - [ ] **Step 6: Persistence** — drop the stream (Shield home), reconnect "Emulation": ES-DE state identical (same system view), no host-side cleanup ran.
 - [ ] **Step 7: Teardown** — run "Emulation (Stop)" from Moonlight: emulator + ES-DE processes gone (`es-session status` shows not running), host desktop untouched throughout.
 
-### Task 12: Emulation workspace toggle (local play on the 57")
+### Task 12: Couch workspace — local toggle + Steam (Couch)
 
-SUPER+SHIFT+E flips the `emulation` workspace between the dongle output and
-the Samsung. Local play gets full-size emulator windows on the real screen;
-flipping back restores couch mode — Sunshine captures the dongle connector,
-so while local the stream would simply show the dongle's empty default.
-Routed windows follow the workspace; no window-rule changes needed.
+Renames the `emulation` workspace to `couch`, adds a SUPER+SHIFT+E toggle
+for local play on the 57", and adds a "Steam (Couch)" Moonlight entry that
+routes Big Picture — and any game it launches — to the dongle for the
+duration of the stream, via a runtime window rule installed by the launch
+script. Static config never changes, so the local Steam/gaming workflow is
+untouched.
 
 **Files:**
-- Modify: `dot_config/hypr/hyprland.lua.tmpl` (inside the personal-gated emulation block)
+- Modify: `dot_config/hypr/hyprland.lua.tmpl` (rename + toggle bind, personal-gated)
+- Modify: `dot_config/sunshine/apps.json` (new entry)
 
-- [ ] **Step 1: Confirm the bind mechanism** — via the `hyprland-docs` skill: does `hl.bind` accept a function (read the workspace's current monitor, then dispatch `hl.dsp.workspace.move` conditionally), or is a `hyprctl` one-liner via `exec_cmd` the idiomatic toggle? SUPER+SHIFT+E is free.
-- [ ] **Step 2: Implement** — toggle `name:emulation` between the Samsung desc and the dongle desc; personal-gated.
-- [ ] **Step 3: Verify live** — `chezmoi apply --exclude scripts ~/.config/hypr/hyprland.lua`; press the bind twice (dongle → Samsung → dongle); `hyprctl workspaces` confirms each move; gaming stays on DP-5; `hyprctl configerrors` empty.
-- [ ] **Step 4: Commit** — single-purpose, no trailers.
+- [ ] **Step 1: Rename** — `emulationWs` value "emulation" → "couch" (rule, binds, comments; table name `emulationWindows` may stay). Grep repo docs for stale `emulation`-ws references.
+- [ ] **Step 2: Confirm mechanisms via `hyprland-docs`** — (a) toggle bind form on 0.56.x: does `hl.bind` accept a function (read current monitor, dispatch `hl.dsp.workspace.move`), or is an `exec_cmd` hyprctl one-liner idiomatic? (b) exact `hyprctl keyword windowrule "workspace couch silent, class:^(steam|steam_app_[0-9]+)$"` syntax, and that `hyprctl reload` drops keyword-added rules.
+- [ ] **Step 3: Implement toggle** — SUPER+SHIFT+E moves `name:couch` Samsung desc ↔ dongle desc; personal-gated.
+- [ ] **Step 4: Implement Steam (Couch)** — apps.json entry: `prep-cmd` `do` = runtime rule + detached `steam steam://open/bigpicture`; `prep-cmd` `undo` = `steam steam://close/bigpicture` + `hyprctl reload`.
+- [ ] **Step 5: Verify rename + toggle live** — `chezmoi apply --exclude scripts ~/.config/hypr/hyprland.lua`; `hyprctl configerrors` empty; press the bind twice (dongle → Samsung → dongle); `hyprctl workspaces` confirms each move; gaming stays on DP-5.
+- [ ] **Step 6: Verify Steam (Couch) host-side** — run the prep-cmd `do` by hand, launch Big Picture detached: `hyprctl -j clients` shows the steam window on `couch`; run `undo`: rule gone after reload, a fresh steam window would route to gaming. Full grid test rides Task 11 with the Shield.
+- [ ] **Step 7: Commit** — single-purpose, no trailers.
