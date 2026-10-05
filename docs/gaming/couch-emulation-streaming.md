@@ -318,9 +318,14 @@ Each step must pass before the next:
    Sunshine log confirms the KMS backend; controller + audio work.
 5. **Input** — Select+Start exits each emulator back to ES-DE; L3+R3
    opens the RetroArch menu.
-6. **Persistence** — drop the stream (Shield home), reconnect
+6. **Couch toggle + Steam (Couch)** — on the host, SUPER+Shift+E moves
+   the couch ws to the 57" and back (gaming stays on DP-5 both ways);
+   from the Shield grid, "Steam (Couch)" opens Big Picture in the
+   stream and a game launched from it stays in the stream; after the
+   session, a locally-launched Steam window lands on gaming again.
+7. **Persistence** — drop the stream (Shield home), reconnect
    "Emulation": ES-DE state identical, no host-side cleanup ran.
-7. **Teardown** — run "Emulation (Stop)" from Moonlight: emulator +
+8. **Teardown** — run "Emulation (Stop)" from Moonlight: emulator +
    ES-DE processes gone (`es-session status` shows not running), host
    desktop untouched throughout.
 
@@ -336,6 +341,10 @@ From the couch (Shield):
 - **Moonlight → "Emulation (Stop)"** — terminates any running emulators,
   then ES-DE. Leaving the session running is also fine (persistent by
   design).
+- **Moonlight → "Steam (Couch)"** — opens Big Picture routed to the
+  couch output; any game launched from it stays there for the duration
+  of the stream. Ends cleanly via Sunshine's undo (closes Big Picture,
+  drops the runtime routing rule).
 
 From the host:
 
@@ -344,6 +353,11 @@ es-session status   # dongle / ROM mount / process report (rc=1 if dongle or mou
 es-session start    # idempotent ensure-running
 es-session stop     # SIGTERM emulators, then ES-DE (SIGKILL after timeout)
 ```
+
+- **SUPER+Shift+E — couch toggle** — moves the couch workspace between
+  the dongle and the 57" for local play. Sunshine keeps capturing the
+  dongle connector, so while local the stream shows the dongle's empty
+  default.
 
 Exit codes: `2` usage, `4` ES-DE binary missing. Dongle or mount
 absence is a warning (desktop notification from `start`), never fatal —
@@ -361,6 +375,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | Stream connects but workspace is empty / ES-DE not running | Sunshine's user-service environment is snapshotted at service start and may lack `WAYLAND_DISPLAY` when enabled for autostart before the Hyprland session imports its env; check `systemctl --user show-environment \| grep WAYLAND_DISPLAY` | `systemctl --user restart app-dev.lizardbyte.app.Sunshine.service` |
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check Nimbus is powered on and the share still permits guest access (if auth was enabled, see setup step 1) |
 | Emulator window shows on the desktop, not in the stream | `hyprctl -j clients` — compare the reported class against the `emulationWindows` regexes | Correct the class regex in `dot_config/hypr/hyprland.lua.tmpl` and `chezmoi apply` |
+| Steam game/BPM opens on the gaming workspace instead of the couch (mid-session) | The runtime rule was dropped — a config reload or compositor restart mid-session clears eval-added rules | Re-launch via the "Steam (Couch)" Moonlight entry (its prep `do` re-installs the rule), or end the session and start it again |
 | No controller input in the stream | Moonlight's per-host settings on the Shield | Input must be enabled for this host in Moonlight settings; verify the combos work locally over USB first to isolate host vs client |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
 | First ROM browse after idle is slow | Expected behavior | Automount penalty: `TimeoutIdleSec=600` unmounts when idle; the next access pays a seconds-long remount |

@@ -314,7 +314,7 @@ window navigation in nvim.
 | `SUPER+D` / `SUPER+Shift+D` | scratchpad special workspace / send window to it |
 | `Alt+Tab` | Noctalia window switcher |
 | `SUPER+S` / `SUPER+Comma` | control center / Noctalia settings |
-| `SUPER+Escape` / `SUPER+Shift+E` | lock / session panel |
+| `SUPER+Escape` / `SUPER+Shift+Escape` | lock / session panel |
 | `SUPER+Shift+R` | reload Hyprland config |
 | `SUPER+Shift+S` | screenshot region → clipboard (all modes: launcher → Screenshot) |
 | media/brightness keys | Noctalia OSDs |

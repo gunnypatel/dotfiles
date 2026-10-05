@@ -56,7 +56,7 @@ Wrap current content unchanged; add a personal-profile-gated emulation block:
 
 - `start`: verify dongle connector present (`hyprctl monitors`), warn (via
   `noctalia msg notification-show`) if the ROM mount is down, then launch
-  ES-DE on the emulation workspace only if not already running (`pgrep`).
+  ES-DE on the couch workspace only if not already running (`pgrep`).
 - `stop`: SIGTERM any running emulator, then ES-DE; no display/monitor
   changes (dongle is always-on).
 - `status`: report connector, mount, ES-DE/emulator PIDs. Exit codes
@@ -83,7 +83,8 @@ Desktop" relic is dead on Wayland and gets dropped); adds:
   `flatpak run com.valvesoftware.Steam steam://open/bigpicture`;
   `prep-cmd` `undo` closes Big Picture and runs `hyprctl reload` to drop
   the eval-added rule. The pre-existing "Steam Big Picture" entry is
-  preserved unchanged for local/desktop use.
+  preserved for local/desktop use (now launched via the Flatpak — no
+  host `steam` binary exists).
 
 ### 5. Emulator configs (new, chezmoi-managed)
 
