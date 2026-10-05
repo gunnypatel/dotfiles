@@ -1,6 +1,7 @@
 {{- /* Emulation streaming additions (couch stack) are emitted only on
    personal machines — set [data.machine] profile = "personal" in
-   chezmoi.toml (opencode.json.tmpl precedent). */ -}}
+    chezmoi.toml (opencode.json.tmpl precedent). */ -}}
+{{- $profile := dig "machine" "profile" "" . -}}
 -- Hyprland config: 57" ultrawide + Noctalia shell.
 -- Lua API: https://wiki.hypr.land/Configuring/Start/
 
@@ -17,6 +18,19 @@ hl.monitor({
     position = "0x0",
     scale    = 1.25,
 })
+
+{{- if eq $profile "personal" }}
+-- Couch-emulation dongle: 4K dummy plug on a spare GPU port. Sunshine
+-- KMS-captures only this output; windows/focus reach it solely via the
+-- emulation workspace rules further down. The pointer CAN edge-cross
+-- onto it like any second monitor — harmless by design.
+hl.monitor({
+    output   = "desc:LLV WOIEYEK 4K120 0x03F92F10",
+    mode     = "3840x2160@60",
+    position = "6144x0",
+    scale    = 1,
+})
+{{- end }}
 
 ------------------
 -- PROGRAMS
@@ -217,6 +231,38 @@ for i, entry in ipairs(gamingWindows) do
         workspace = entry.master and gamingWs or (gamingWs .. " silent"),
     })
 end
+
+{{- if eq $profile "personal" }}
+-- Emulation workspace: lives on the dongle output; Sunshine streams it to
+-- the Shield. Same pattern as gamingWs above: apps arrive silently, so
+-- desktop focus never moves. Classes verified via `hyprctl clients` —
+-- dolphin/pcsx2 regexes may need adjusting per Flatpak/app-id reality.
+local emulationWs = "emulation"
+
+local emulationWindows = {
+    { class = "^es-de$" },
+    { class = "^(com\\.libretro\\.RetroArch|retroarch)$" },
+    { class = "^(org\\.DolphinEmu\\.dolphin-emu|dolphin-emu)" },
+    { class = "^(org\\.pcsx2\\.PCSX2|pcsx2)" },
+}
+
+-- default = true makes "emulation" the dongle output's own workspace, so
+-- nothing ever spawns a stray numbered workspace there.
+hl.workspace_rule({
+    workspace  = "name:" .. emulationWs,
+    monitor    = "desc:LLV WOIEYEK 4K120 0x03F92F10",
+    persistent = true,
+    default    = true,
+})
+
+for i, entry in ipairs(emulationWindows) do
+    hl.window_rule({
+        name  = "emulation-ws-" .. i,
+        match = { class = entry.class, title = entry.title },
+        workspace = emulationWs .. " silent",
+    })
+end
+{{- end }}
 
 -- Scratchpad: drop-down layer over the current workspace. Stashing is
 -- silent: focus stays here, so you can send several windows in a row.
