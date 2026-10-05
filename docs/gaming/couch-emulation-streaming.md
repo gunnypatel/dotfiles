@@ -3,7 +3,7 @@
 Stream ES-DE and the RetroArch / Dolphin / PCSX2 emulators from the
 Hyprland host to the Shield TV over Moonlight without touching the
 desktop session: a 4K dummy plug presents a dedicated DRM connector that
-Hyprland pins at 3840x2160@60, a persistent `emulation` workspace bound
+Hyprland pins at 3840x2160@60, a persistent `couch` workspace bound
 to that output collects every emulator window via silent window rules,
 and Sunshine KMS-captures only that connector. ROMs automount over CIFS
 from Nimbus, and `es-session` gives idempotent start/stop/status from
@@ -25,7 +25,7 @@ Sunshine (host user service, KMS capture)
    ▼
 4K dummy plug (spare GPU port, pinned 3840x2160@60)
    ▼
-Hyprland "emulation" workspace (persistent, dongle-bound)
+Hyprland "couch" workspace (persistent, dongle-bound)
    │  silent window rules: ^es-de$, ^retroarch$, ^dolphin-emu, ^pcsx2
    ▼
 ES-DE ── launches ──► RetroArch / Dolphin / PCSX2
@@ -34,7 +34,7 @@ ES-DE ── launches ──► RetroArch / Dolphin / PCSX2
 ```
 
 Daily flow: pick **Emulation** in Moonlight → Sunshine runs
-`es-session start` → ES-DE launches (or is reused) on the emulation
+`es-session start` → ES-DE launches (or is reused) on the couch
 workspace → play. Select(hold)+Start exits an emulator back to the ES-DE
 grid; L3+R3 opens the RetroArch menu. Dropping the stream changes
 nothing on the host (ES-DE persists between streams); **Emulation
@@ -127,7 +127,7 @@ covers the AppImage's 15-char comm truncation).
 
 ### 4. When the dongle arrives
 
-#### 4.1 Hyprland: dongle monitor + emulation routing (DONE — as-built)
+#### 4.1 Hyprland: dongle monitor + couch routing (DONE — as-built)
 
 The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
 `card1-HDMI-A-1`, Hyprland name `HDMI-A-1`) is configured in
@@ -136,7 +136,7 @@ The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
 - Monitor entry `3840x2160@60` at logical `6144x0`, scale 1. The
   position is in LOGICAL coordinates — the 57" at scale 1.25 occupies
   0–6143 (7680/1.25) — not the physical `7680x0` the plan draft had.
-- `emulation` workspace bound to the dongle (`persistent` +
+- `couch` workspace bound to the dongle (`persistent` +
   `default`), window rules sending the es-de / RetroArch / Dolphin /
   PCSX2 classes there silently. The dolphin/pcsx2 regexes are
   deliberately unanchored on the right (packaging suffixes such as
@@ -152,12 +152,12 @@ Verify (already deployed; re-check after template edits):
 ```bash
 chezmoi apply
 hyprctl monitors        # dongle at 3840x2160@60, 57" unchanged at 0x0
-hyprctl workspaces      # gaming on DP-5, emulation on HDMI-A-1
+hyprctl workspaces      # gaming on DP-5, couch on HDMI-A-1
 es-session start && sleep 3
 hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspace"]["name"]) for c in json.load(sys.stdin)]'
 ```
 
-Expect an `es-de` row on workspace `emulation`, desktop focus unmoved.
+Expect an `es-de` row on workspace `couch`, desktop focus unmoved.
 Classes were verified this way for es-de, RetroArch (AppImage) and
 Dolphin (Flatpak); PCSX2 is unverified until installed.
 
@@ -259,7 +259,7 @@ hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspac
 chezmoi diff ~/.config/retroarch/retroarch.cfg
 ```
 
-Expect a `com.libretro.RetroArch` row on workspace `emulation` and a
+Expect a `com.libretro.RetroArch` row on workspace `couch` and a
 clean `chezmoi diff`.
 
 With a paired controller (USB locally, or through a Moonlight test
@@ -309,7 +309,7 @@ Each step must pass before the next:
    (idle timeout or manual), `ls /mnt/nimbus/roms` re-mounts on access;
    reboot once with Nimbus powered off → boot completes normally.
 2. **Routing** — `es-session start`; `hyprctl -j clients` shows es-de
-   on workspace `emulation`; desktop focus never moved.
+   on workspace `couch`; desktop focus never moved.
 3. **Script** — `start` twice → one PID; `status` accurate; `stop`
    clears everything.
 4. **Stream** — Shield Moonlight → "Emulation": set the host's
@@ -422,7 +422,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 
 | Path | Managed by | Notes |
 |---|---|---|
-| `dot_config/hypr/hyprland.lua.tmpl` → `~/.config/hypr/hyprland.lua` | chezmoi | Dongle monitor + emulation routing, `personal`-gated |
+| `dot_config/hypr/hyprland.lua.tmpl` → `~/.config/hypr/hyprland.lua` | chezmoi | Dongle monitor + couch routing, `personal`-gated |
 | `dot_local/bin/executable_es-session` → `~/.local/bin/es-session` | chezmoi | `EMULATORS` must match installed binary names |
 | `dot_config/sunshine/apps.json` → `~/.config/sunshine/apps.json` | chezmoi | App grid incl. Emulation / Emulation (Stop) |
 | `dot_config/retroarch/retroarch.cfg` → `~/.config/retroarch/retroarch.cfg` | chezmoi | Runtime saves disabled; see recovery in Maintenance |

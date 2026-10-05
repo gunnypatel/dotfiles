@@ -30,7 +30,7 @@ to the personal machine profile so work machines are unaffected.
 | Chezmoi gating | `[data.machine] profile = "personal"` (opencode.json.tmpl precedent) | hyprland.lua becomes `.tmpl` with the emulation block conditional; new files excluded on other machines via templated `.chezmoiignore`. |
 | Sunshine config ownership | `apps.json` chezmoi-managed whole (existing entries preserved); `sunshine.conf` stays hand-managed | Working Steam capture config is too valuable to clobber; runbook documents the two manual keys (`capture = kms`, `output_name`). |
 | Hyprland routing | New persistent `emulation` workspace bound to the dongle monitor; new `emulationWindows` table | Mirrors the existing `gamingWs`/`gamingWindows` pattern; Steam workflow untouched; apps arrive silently so desktop focus never moves. |
-| Couch revision (2026-10-04) | `emulation` ws renamed `couch`; SUPER+SHIFT+E toggles it dongle ↔ 57"; new "Steam (Couch)" app installs a session-scoped runtime rule (`hyprctl keyword windowrule` routing `steam`/`steam_app_*` → couch) and drops it via `hyprctl reload` on exit | Static rules can't distinguish couch-launched Steam games from locally-launched ones (identical window classes), so origin-based routing must be dynamic and session-scoped. Rename reflects that the dongle workspace hosts more than emulation. |
+| Couch revision (2026-10-04) | `emulation` ws renamed `couch`; SUPER+SHIFT+E toggles it dongle ↔ 57"; new "Steam (Couch)" app installs a session-scoped runtime rule (`hyprctl eval 'hl.window_rule({ ... workspace = "couch silent" })'` routing `steam`/`steam_app_*` → couch — `hyprctl keyword` is rejected by Lua-first 0.56.2) and drops it via `hyprctl reload` on exit | Static rules can't distinguish couch-launched Steam games from locally-launched ones (identical window classes), so origin-based routing must be dynamic and session-scoped. Rename reflects that the dongle workspace hosts more than emulation. |
 
 ## Components
 
@@ -78,10 +78,12 @@ Desktop" relic is dead on Wayland and gets dropped); adds:
   dependency; Sunshine's default icon).
 - "Emulation (Stop)": `detached = es-session stop`.
 - "Steam (Couch)": `prep-cmd` `do` installs the runtime window rule
-  (`steam`/`steam_app_*` → couch silent) then detaches
-  `steam steam://open/bigpicture`; `prep-cmd` `undo` closes Big Picture
-  and runs `hyprctl reload` to drop the runtime rule. The pre-existing
-  "Steam Big Picture" entry is preserved unchanged for local/desktop use.
+  (`hyprctl eval 'hl.window_rule({ ... workspace = "couch silent" })'`;
+  `steam`/`steam_app_*` classes) then detaches
+  `flatpak run com.valvesoftware.Steam steam://open/bigpicture`;
+  `prep-cmd` `undo` closes Big Picture and runs `hyprctl reload` to drop
+  the eval-added rule. The pre-existing "Steam Big Picture" entry is
+  preserved unchanged for local/desktop use.
 
 ### 5. Emulator configs (new, chezmoi-managed)
 
@@ -119,7 +121,7 @@ Moonlight "Emulation" (Shield)
   → "Emulation (Stop)" app: es-session.sh stop → clean teardown
 
 Moonlight "Steam (Couch)" (Shield)
-  → Sunshine session → prep-cmd installs runtime rule → Big Picture opens
+  → Sunshine session → prep-cmd installs runtime rule (hyprctl eval) → Big Picture opens
   → rule routes steam + steam_app_* windows to couch ws (silent)
   → games launched from Big Picture land on the dongle too
   → session end: undo closes Big Picture + hyprctl reload drops the rule

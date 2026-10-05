@@ -4,7 +4,7 @@
 
 **Goal:** Stream ES-DE + RetroArch/Dolphin/PCSX2 from the Hyprland host to the Shield TV via Sunshine, with a 4K dummy-plug output isolated from the desktop, ROMs automounted from Nimbus, and controller-only exit paths.
 
-**Architecture:** A dummy plug presents a real 4K DRM connector that Hyprland pins to 3840x2160@60; an `emulation` workspace bound to that output receives ES-DE and all emulators via silent window rules; Sunshine KMS-captures only that connector. An idempotent `es-session` script manages the persistent ES-DE process; a systemd automount serves the CIFS ROM share. Everything lands in chezmoi gated on the `personal` machine profile.
+**Architecture:** A dummy plug presents a real 4K DRM connector that Hyprland pins to 3840x2160@60; a `couch` workspace bound to that output receives ES-DE and all emulators via silent window rules; Sunshine KMS-captures only that connector. An idempotent `es-session` script manages the persistent ES-DE process; a systemd automount serves the CIFS ROM share. Everything lands in chezmoi gated on the `personal` machine profile.
 
 **Tech Stack:** Hyprland 0.56.x (Lua config), Sunshine (KMS capture), Moonlight (Shield), systemd mount units, CIFS, POSIX sh, chezmoi templating.
 
@@ -773,7 +773,7 @@ git add docs/gaming/couch-emulation-streaming.md && git commit -m "Add couch emu
 Mirrors the spec's Testing section. Each step must pass before the next.
 
 - [ ] **Step 1: Automount** — after `sudo systemctl stop mnt-nimbus-roms.mount` (idle timeout or manual), `ls /mnt/nimbus/roms` re-mounts on access; reboot once with Nimbus powered off → boot completes normally.
-- [ ] **Step 2: Routing** — `es-session start`; `hyprctl -j clients` shows es-de on workspace `emulation`; desktop focus never moved.
+- [ ] **Step 2: Routing** — `es-session start`; `hyprctl -j clients` shows es-de on workspace `couch`; desktop focus never moved.
 - [ ] **Step 3: Script** — `start` twice → one PID; `status` accurate; `stop` clears everything.
 - [ ] **Step 4: Stream** — Shield Moonlight → "Emulation": set the host's streaming resolution to 3840x2160@60 in Moonlight settings; stats overlay shows 4K + HEVC; Sunshine log confirms KMS backend; controller + audio work.
 - [ ] **Step 5: Input** — Select+Start exits each emulator back to ES-DE; L3+R3 opens the RetroArch menu.
@@ -793,10 +793,10 @@ untouched.
 - Modify: `dot_config/hypr/hyprland.lua.tmpl` (rename + toggle bind, personal-gated)
 - Modify: `dot_config/sunshine/apps.json` (new entry)
 
-- [ ] **Step 1: Rename** — `emulationWs` value "emulation" → "couch" (rule, binds, comments; table name `emulationWindows` may stay). Grep repo docs for stale `emulation`-ws references.
-- [ ] **Step 2: Confirm mechanisms via `hyprland-docs`** — (a) toggle bind form on 0.56.x: does `hl.bind` accept a function (read current monitor, dispatch `hl.dsp.workspace.move`), or is an `exec_cmd` hyprctl one-liner idiomatic? (b) exact `hyprctl keyword windowrule "workspace couch silent, class:^(steam|steam_app_[0-9]+)$"` syntax, and that `hyprctl reload` drops keyword-added rules.
-- [ ] **Step 3: Implement toggle** — SUPER+SHIFT+E moves `name:couch` Samsung desc ↔ dongle desc; personal-gated.
-- [ ] **Step 4: Implement Steam (Couch)** — apps.json entry: `prep-cmd` `do` = runtime rule + detached `steam steam://open/bigpicture`; `prep-cmd` `undo` = `steam steam://close/bigpicture` + `hyprctl reload`.
-- [ ] **Step 5: Verify rename + toggle live** — `chezmoi apply --exclude scripts ~/.config/hypr/hyprland.lua`; `hyprctl configerrors` empty; press the bind twice (dongle → Samsung → dongle); `hyprctl workspaces` confirms each move; gaming stays on DP-5.
-- [ ] **Step 6: Verify Steam (Couch) host-side** — run the prep-cmd `do` by hand, launch Big Picture detached: `hyprctl -j clients` shows the steam window on `couch`; run `undo`: rule gone after reload, a fresh steam window would route to gaming. Full grid test rides Task 11 with the Shield.
-- [ ] **Step 7: Commit** — single-purpose, no trailers.
+- [x] **Step 1: Rename** — `emulationWs` value "emulation" → "couch" (rule, binds, comments; table name `emulationWindows` may stay). Grep repo docs for stale `emulation`-ws references.
+- [x] **Step 2: Confirm mechanisms via `hyprland-docs`** — (a) toggle bind form on 0.56.x: `hl.bind` accepts a Lua function (`hl.get_workspace(...).monitor.description` + `hl.dispatch(hl.dsp.workspace.move({...}))`); (b) runtime rule via `hyprctl eval 'hl.window_rule({ name = ..., match = { class = "^(steam|steam_app_[0-9]+)$" }, workspace = "couch silent" })'` — 0.56.2 REJECTS `hyprctl keyword windowrule` on Lua-first configs ("keyword can't work with non-legacy parsers. Use eval.") — and `hyprctl reload` drops eval-added rules.
+- [x] **Step 3: Implement toggle** — SUPER+SHIFT+E moves `name:couch` Samsung desc ↔ dongle desc; personal-gated.
+- [x] **Step 4: Implement Steam (Couch)** — apps.json entry: `prep-cmd` `do` = runtime rule (`hyprctl eval` as above) + detached `flatpak run com.valvesoftware.Steam steam://open/bigpicture` (no host `steam` binary — Steam is the Flatpak); `prep-cmd` `undo` = `flatpak run com.valvesoftware.Steam steam://close/bigpicture` + `hyprctl reload`.
+- [x] **Step 5: Verify rename + toggle live** — `chezmoi apply --exclude scripts ~/.config/hypr/hyprland.lua`; `hyprctl configerrors` empty; press the bind twice (dongle → Samsung → dongle); `hyprctl workspaces` confirms each move; gaming stays on DP-5.
+- [x] **Step 6: Verify Steam (Couch) host-side** — run the prep-cmd `do` by hand, launch Big Picture detached: `hyprctl -j clients` shows the steam window on `couch`; run `undo`: rule gone after reload, a fresh steam window would route to gaming. Full grid test rides Task 11 with the Shield.
+- [x] **Step 7: Commit** — single-purpose, no trailers.
