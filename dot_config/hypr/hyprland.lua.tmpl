@@ -1,6 +1,6 @@
-{{- /* Emulation streaming additions (couch stack) are emitted only on
-   personal machines — set [data.machine] profile = "personal" in
-    chezmoi.toml (opencode.json.tmpl precedent). */ -}}
+{{- /* Personal-machine-only additions (couch-emulation stack, gaming-ws
+   monitor pin) — set [data.machine] profile = "personal" in
+   chezmoi.toml (opencode.json.tmpl precedent). */ -}}
 {{- $profile := dig "machine" "profile" "" . -}}
 -- Hyprland config: 57" ultrawide + Noctalia shell.
 -- Lua API: https://wiki.hypr.land/Configuring/Start/
@@ -20,6 +20,7 @@ hl.monitor({
 })
 
 {{- if eq $profile "personal" }}
+
 -- Couch-emulation dongle: 4K dummy plug on a spare GPU port. Sunshine
 -- KMS-captures only this output; windows/focus reach it solely via the
 -- emulation workspace rules further down. The pointer CAN edge-cross
@@ -225,7 +226,7 @@ hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. g
 hl.workspace_rule({
     workspace  = "name:" .. gamingWs,
     persistent = true,{{ if eq $profile "personal" }}
-    monitor    = "desc:Samsung Electric Company Odyssey G95NC HNTX501572",{{ end }}
+    monitor    = "desc:Samsung Electric Company Odyssey G95NC",{{ end }}
 })
 
 for i, entry in ipairs(gamingWindows) do
@@ -239,10 +240,13 @@ for i, entry in ipairs(gamingWindows) do
 end
 
 {{- if eq $profile "personal" }}
+
 -- Emulation workspace: lives on the dongle output; Sunshine streams it to
 -- the Shield. Same pattern as gamingWs above: apps arrive silently, so
--- desktop focus never moves. Classes verified via `hyprctl clients` —
--- dolphin/pcsx2 regexes may need adjusting per Flatpak/app-id reality.
+-- desktop focus never moves. es-de/RetroArch/dolphin classes verified via
+-- `hyprctl clients`; pcsx2 is unverified (not installed). The dolphin and
+-- pcsx2 patterns run unanchored on the right to tolerate packaging
+-- suffixes (e.g. pcsx2-qt).
 local emulationWs = "emulation"
 
 local emulationWindows = {
