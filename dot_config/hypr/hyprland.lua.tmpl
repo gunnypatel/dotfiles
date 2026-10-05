@@ -12,8 +12,10 @@
 -- Samsung Odyssey G95NC 57" 7680x2160@120 (verify: `hyprctl monitors`).
 -- Matched by description, not connector: the DP port re-enumerated once
 -- (DP-5 -> DP-4), which silently dropped this rule and reset scale to 1.
+local samsungDesc = "Samsung Electric Company Odyssey G95NC"
+
 hl.monitor({
-    output   = "desc:Samsung Electric Company Odyssey G95NC",
+    output   = "desc:" .. samsungDesc,
     mode     = "7680x2160@120",
     position = "0x0",
     scale    = 1.25,
@@ -25,8 +27,10 @@ hl.monitor({
 -- KMS-captures only this output; windows/focus reach it solely via the
 -- couch workspace rules further down. The pointer CAN edge-cross
 -- onto it like any second monitor — harmless by design.
+local dongleDesc = "LLV WOIEYEK 4K120 0x03F92F10"
+
 hl.monitor({
-    output   = "desc:LLV WOIEYEK 4K120 0x03F92F10",
+    output   = "desc:" .. dongleDesc,
     mode     = "3840x2160@60",
     position = "6144x0",
     scale    = 1,
@@ -226,7 +230,7 @@ hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "name:" .. g
 hl.workspace_rule({
     workspace  = "name:" .. gamingWs,
     persistent = true,{{ if eq $profile "personal" }}
-    monitor    = "desc:Samsung Electric Company Odyssey G95NC",{{ end }}
+    monitor    = "desc:" .. samsungDesc,{{ end }}
 })
 
 for i, entry in ipairs(gamingWindows) do
@@ -261,7 +265,7 @@ local emulationWindows = {
 -- nothing ever spawns a stray numbered workspace there.
 hl.workspace_rule({
     workspace  = "name:" .. couchWs,
-    monitor    = "desc:LLV WOIEYEK 4K120 0x03F92F10",
+    monitor    = "desc:" .. dongleDesc,
     persistent = true,
     default    = true,
 })
@@ -278,9 +282,6 @@ end
 -- dongle and the Samsung (Sunshine keeps capturing the dongle either
 -- way). A conditional bind must be a function — a bare dispatcher
 -- table would freeze its arguments at config load.
-local samsungDesc = "Samsung Electric Company Odyssey G95NC"
-local dongleDesc  = "LLV WOIEYEK 4K120 0x03F92F10"
-
 hl.bind(mainMod .. " + SHIFT + E", function()
     local ws = hl.get_workspace("name:" .. couchWs)
     if not ws or not ws.monitor then
@@ -312,8 +313,9 @@ hl.bind(mainMod .. " + S",         hl.dsp.exec_cmd(ipc .. "panel-toggle control-
 hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"), { description = "Noctalia settings" })
 hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"), { description = "Rename workspace" })
 hl.bind(mainMod .. " + ESCAPE", hl.dsp.exec_cmd(ipc .. "session lock"), { description = "Lock session" })
--- SHIFT+ESCAPE pairs with the lock bind; SUPER+SHIFT+E is taken by the
--- couch-workspace toggle on personal machines (block above).
+-- SHIFT+ESCAPE pairs with the lock bind and is kept uniform across
+-- machines; on personal machines SUPER+SHIFT+E is the couch-workspace
+-- toggle.
 hl.bind(mainMod .. " + SHIFT + ESCAPE", hl.dsp.exec_cmd(ipc .. "panel-toggle session"), { description = "Session menu" })
 
 -- Reload (no Lua reload dispatcher yet; hyprctl works from any bind)

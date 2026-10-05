@@ -382,11 +382,13 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
   Fusion). Mesa upgrades keep it, but if streams ever fall back to
   software x264, re-check with `vainfo` (troubleshooting table).
 
-- **Dongle description changes** (new dongle, GPU swap, firmware
-  quirk): re-run `hyprctl monitors all`, then update the `desc:` value
-  in BOTH the `hl.monitor` entry and the `hl.workspace_rule` in
-  `dot_config/hypr/hyprland.lua.tmpl`, and — if the new description no
-  longer contains the match word — `DONGLE_DESC` in
+- **Monitor description changes** (new dongle, GPU swap, firmware
+  quirk): re-run `hyprctl monitors all`, then update the desc local in
+  `dot_config/hypr/hyprland.lua.tmpl` — `samsungDesc` above the
+  primary monitor entry, `dongleDesc` at the top of the dongle block;
+  the monitor entries, workspace rules/pins, and the couch toggle all
+  reference the locals — and, if the new dongle description no longer
+  contains the match word, `DONGLE_DESC` in
   `dot_local/bin/executable_es-session`. `chezmoi apply`.
 - **4K ↔ 1080p fallback** is exactly two values, nothing else changes:
   the `mode` in the hyprland monitor entry (`3840x2160@60` ↔
