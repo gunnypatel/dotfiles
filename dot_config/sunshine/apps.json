@@ -21,6 +21,19 @@
             "image-path": "steam.png"
         },
         {
+            "name": "Steam (Couch)",
+            "detached": [
+                "setsid flatpak run com.valvesoftware.Steam steam://open/bigpicture"
+            ],
+            "prep-cmd": [
+                {
+                    "do": "hyprctl eval 'hl.window_rule({ name = \"couch-steam-stream\", match = { class = \"^(steam|steam_app_[0-9]+)$\" }, workspace = \"couch silent\" })'",
+                    "undo": "setsid flatpak run com.valvesoftware.Steam steam://close/bigpicture && hyprctl reload"
+                }
+            ],
+            "image-path": "steam.png"
+        },
+        {
             "name": "Emulation",
             "detached": [
                 "setsid -f es-session start"

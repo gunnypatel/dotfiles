@@ -23,7 +23,7 @@ hl.monitor({
 
 -- Couch-emulation dongle: 4K dummy plug on a spare GPU port. Sunshine
 -- KMS-captures only this output; windows/focus reach it solely via the
--- emulation workspace rules further down. The pointer CAN edge-cross
+-- couch workspace rules further down. The pointer CAN edge-cross
 -- onto it like any second monitor — harmless by design.
 hl.monitor({
     output   = "desc:LLV WOIEYEK 4K120 0x03F92F10",
@@ -241,13 +241,14 @@ end
 
 {{- if eq $profile "personal" }}
 
--- Emulation workspace: lives on the dongle output; Sunshine streams it to
--- the Shield. Same pattern as gamingWs above: apps arrive silently, so
--- desktop focus never moves. es-de/RetroArch/dolphin classes verified via
--- `hyprctl clients`; pcsx2 is unverified (not installed). The dolphin and
--- pcsx2 patterns run unanchored on the right to tolerate packaging
--- suffixes (e.g. pcsx2-qt).
-local emulationWs = "emulation"
+-- Couch workspace: lives on the dongle output; Sunshine streams it to
+-- the Shield. Hosts more than emulation (e.g. streamed Steam Big
+-- Picture), hence the name. Same pattern as gamingWs above: apps arrive
+-- silently, so desktop focus never moves. es-de/RetroArch/dolphin
+-- classes verified via `hyprctl clients`; pcsx2 is unverified (not
+-- installed). The dolphin and pcsx2 patterns run unanchored on the
+-- right to tolerate packaging suffixes (e.g. pcsx2-qt).
+local couchWs = "couch"
 
 local emulationWindows = {
     { class = "^es-de$" },
@@ -256,10 +257,10 @@ local emulationWindows = {
     { class = "^(org\\.pcsx2\\.PCSX2|pcsx2)" },
 }
 
--- default = true makes "emulation" the dongle output's own workspace, so
+-- default = true makes "couch" the dongle output's own workspace, so
 -- nothing ever spawns a stray numbered workspace there.
 hl.workspace_rule({
-    workspace  = "name:" .. emulationWs,
+    workspace  = "name:" .. couchWs,
     monitor    = "desc:LLV WOIEYEK 4K120 0x03F92F10",
     persistent = true,
     default    = true,
@@ -269,9 +270,28 @@ for i, entry in ipairs(emulationWindows) do
     hl.window_rule({
         name  = "emulation-ws-" .. i,
         match = { class = entry.class, title = entry.title },
-        workspace = emulationWs .. " silent",
+        workspace = couchWs .. " silent",
     })
 end
+
+-- Local couch play on the 57": toggle the couch workspace between the
+-- dongle and the Samsung (Sunshine keeps capturing the dongle either
+-- way). A conditional bind must be a function — a bare dispatcher
+-- table would freeze its arguments at config load.
+local samsungDesc = "Samsung Electric Company Odyssey G95NC"
+local dongleDesc  = "LLV WOIEYEK 4K120 0x03F92F10"
+
+hl.bind(mainMod .. " + SHIFT + E", function()
+    local ws = hl.get_workspace("name:" .. couchWs)
+    if not ws or not ws.monitor then
+        return
+    end
+    local onDongle = ws.monitor.description == dongleDesc
+    hl.dispatch(hl.dsp.workspace.move({
+        workspace = "name:" .. couchWs,
+        monitor   = "desc:" .. (onDongle and samsungDesc or dongleDesc),
+    }))
+end, { description = "Toggle couch workspace (dongle <-> Samsung)" })
 {{- end }}
 
 -- Scratchpad: drop-down layer over the current workspace. Stashing is
@@ -291,8 +311,10 @@ hl.bind(mainMod .. " + S",         hl.dsp.exec_cmd(ipc .. "panel-toggle control-
 -- COMMA renames the workspace (tmux prefix+, parity); settings moved to PERIOD
 hl.bind(mainMod .. " + PERIOD",    hl.dsp.exec_cmd(ipc .. "settings-toggle"), { description = "Noctalia settings" })
 hl.bind(mainMod .. " + COMMA",     hl.dsp.exec_cmd("ws-rename"), { description = "Rename workspace" })
-hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(ipc .. "session lock"), { description = "Lock session" })
-hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(ipc .. "panel-toggle session"), { description = "Session menu" })
+hl.bind(mainMod .. " + ESCAPE", hl.dsp.exec_cmd(ipc .. "session lock"), { description = "Lock session" })
+-- SHIFT+ESCAPE pairs with the lock bind; SUPER+SHIFT+E is taken by the
+-- couch-workspace toggle on personal machines (block above).
+hl.bind(mainMod .. " + SHIFT + ESCAPE", hl.dsp.exec_cmd(ipc .. "panel-toggle session"), { description = "Session menu" })
 
 -- Reload (no Lua reload dispatcher yet; hyprctl works from any bind)
 hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload"), { description = "Reload Hyprland config" })
