@@ -12,7 +12,7 @@ set -eu
 ESDE_BIN="${ESDE_BIN:-$HOME/AppImages/es-de.AppImage}"
 MOUNT_POINT=/mnt/nimbus/roms
 DONGLE_DESC="${DONGLE_DESC:-dummy}"
-EMULATORS="retroarch dolphin-emu pcsx2-qt"
+EMULATORS="retroarch retroarch.appim dolphin-emu pcsx2-qt" # retroarch.appim = AppImage comm, 15-char truncation
 
 notify() {
     noctalia msg notification-show "$1" "$2" 2>/dev/null || true
