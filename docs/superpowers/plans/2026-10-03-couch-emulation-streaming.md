@@ -779,3 +779,19 @@ Mirrors the spec's Testing section. Each step must pass before the next.
 - [ ] **Step 5: Input** — Select+Start exits each emulator back to ES-DE; L3+R3 opens the RetroArch menu.
 - [ ] **Step 6: Persistence** — drop the stream (Shield home), reconnect "Emulation": ES-DE state identical (same system view), no host-side cleanup ran.
 - [ ] **Step 7: Teardown** — run "Emulation (Stop)" from Moonlight: emulator + ES-DE processes gone (`es-session status` shows not running), host desktop untouched throughout.
+
+### Task 12: Emulation workspace toggle (local play on the 57")
+
+SUPER+SHIFT+E flips the `emulation` workspace between the dongle output and
+the Samsung. Local play gets full-size emulator windows on the real screen;
+flipping back restores couch mode — Sunshine captures the dongle connector,
+so while local the stream would simply show the dongle's empty default.
+Routed windows follow the workspace; no window-rule changes needed.
+
+**Files:**
+- Modify: `dot_config/hypr/hyprland.lua.tmpl` (inside the personal-gated emulation block)
+
+- [ ] **Step 1: Confirm the bind mechanism** — via the `hyprland-docs` skill: does `hl.bind` accept a function (read the workspace's current monitor, then dispatch `hl.dsp.workspace.move` conditionally), or is a `hyprctl` one-liner via `exec_cmd` the idiomatic toggle? SUPER+SHIFT+E is free.
+- [ ] **Step 2: Implement** — toggle `name:emulation` between the Samsung desc and the dongle desc; personal-gated.
+- [ ] **Step 3: Verify live** — `chezmoi apply --exclude scripts ~/.config/hypr/hyprland.lua`; press the bind twice (dongle → Samsung → dongle); `hyprctl workspaces` confirms each move; gaming stays on DP-5; `hyprctl configerrors` empty.
+- [ ] **Step 4: Commit** — single-purpose, no trailers.
