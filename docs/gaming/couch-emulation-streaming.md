@@ -101,202 +101,133 @@ findmnt /mnt/nimbus/roms                     # expect: a cifs entry
 
 ### 3. Install emulators and cores (no dongle needed)
 
-All three packages are confirmed available in the repos:
+As installed on this machine:
 
-```bash
-sudo dnf install retroarch dolphin-emu pcsx2
-```
+- **RetroArch** — AppImage at `~/AppImages/retroarch.appimage` (window
+  class `com.libretro.RetroArch`; process comm truncates to
+  `retroarch.appim`). Cores install from inside the app: **Main Menu →
+  Online Updater → Core Downloader** (recommended set: Gambatte, mGBA,
+  Nestopia UE, Snes9x, Genesis Plus GX, Mupen64Plus-Next). The dnf
+  `retroarch` package also exists at `/usr/bin/retroarch` but ships no
+  core downloader — the AppImage is the canonical install.
+- **Dolphin** — Flatpak `org.DolphinEmu.dolphin-emu` (class is plain
+  `dolphin-emu`), granted read-only ROM access (already applied; takes
+  effect on next app launch):
 
-Record the exact binary names — `es-session`'s `EMULATORS` list must
-match them:
+  ```bash
+  flatpak override --user --filesystem=/mnt/nimbus/roms:ro org.DolphinEmu.dolphin-emu
+  ```
 
-```bash
-rpm -ql retroarch dolphin-emu pcsx2 | grep -E 'bin/'
-retroarch --version
-```
+- **PCSX2** — NOT installed yet (dnf vs Flatpak decision pending; the
+  routing regexes in the Hyprland config already cover both packagings).
 
-If the PCSX2 binary is `pcsx2` rather than `pcsx2-qt`, edit
-`EMULATORS` in `dot_local/bin/executable_es-session` and run
-`chezmoi apply`.
-
-Install libretro cores matching the per-system folders now visible
-under `/mnt/nimbus/roms`:
-
-```bash
-dnf search libretro | head -40
-sudo dnf install libretro-<core> ...   # e.g. a snes core for snes/, a gb/gba core
-```
+`es-session`'s `EMULATORS` list matches the installed launchers:
+`retroarch retroarch.appim dolphin-emu pcsx2-qt` (`retroarch.appim`
+covers the AppImage's 15-char comm truncation).
 
 ### 4. When the dongle arrives
 
-#### 4.1 Hyprland: dongle monitor + emulation routing
+#### 4.1 Hyprland: dongle monitor + emulation routing (DONE — as-built)
 
-Plug the dongle in and record its description:
+The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
+`card1-HDMI-A-1`, Hyprland name `HDMI-A-1`) is configured in
+`dot_config/hypr/hyprland.lua.tmpl`, personal-profile-gated:
 
-```bash
-hyprctl monitors all
-```
+- Monitor entry `3840x2160@60` at logical `6144x0`, scale 1. The
+  position is in LOGICAL coordinates — the 57" at scale 1.25 occupies
+  0–6143 (7680/1.25) — not the physical `7680x0` the plan draft had.
+- `emulation` workspace bound to the dongle (`persistent` +
+  `default`), window rules sending the es-de / RetroArch / Dolphin /
+  PCSX2 classes there silently. The dolphin/pcsx2 regexes are
+  deliberately unanchored on the right (packaging suffixes such as
+  `pcsx2-qt`).
+- The `gaming` workspace is pinned to the Samsung
+  (`desc:Samsung Electric Company Odyssey G95NC`): a newly appeared
+  output claims the last unpinned workspace, so without the pin the
+  dongle steals `gaming` (bit us once — fixed in commit `7fc39f5`).
+- `DONGLE_DESC` in `es-session` defaults to `WOIEYEK`.
 
-Expect a second monitor entry with a 4K mode. Record the full
-`description:` string (e.g. `LSB Dummy Plug HD`). If it doesn't contain
-a stable word like "dummy", set `DONGLE_DESC` in
-`dot_local/bin/executable_es-session` to a substring that uniquely
-matches it.
-
-**Syntax caveat:** the workspace-rule `monitor` field used by this
-config's `hl.workspace_rule` Lua API must be confirmed on the installed
-Hyprland 0.56.x before relying on it (plan Task 6 Step 2 used the
-`hyprland-docs` skill for this). `output create` / headless outputs are
-NOT part of this design.
-
-Edit `dot_config/hypr/hyprland.lua.tmpl`. First put the profile
-variable directly under the existing template header comment:
-
-```
-{{- $profile := dig "machine" "profile" "" . -}}
-```
-
-Then add the monitor entry in the MONITORS section, below the existing
-`hl.monitor` call:
-
-```lua
-{{- if eq $profile "personal" }}
--- Couch-emulation dongle: 4K dummy plug on a spare GPU port. Sunshine
--- KMS-captures only this output; windows/focus reach it solely via the
--- emulation workspace rules further down. The pointer CAN edge-cross
--- onto it like any second monitor — harmless by design.
-hl.monitor({
-    output   = "desc:REPLACE_WITH_OBSERVED_DESCRIPTION",
-    mode     = "3840x2160@60",
-    position = "7680x0",
-    scale    = 1,
-})
-{{- end }}
-```
-
-And the workspace + window routing after the existing gaming block
-(~line 217), using the same dongle description in `monitor`:
-
-```lua
-{{- if eq $profile "personal" }}
--- Emulation workspace: lives on the dongle output; Sunshine streams it
--- to the Shield. Same pattern as gamingWs above: apps arrive silently,
--- so desktop focus never moves. Classes verified via `hyprctl clients`
--- on first launch of each app (below).
-local emulationWs = "emulation"
-
-local emulationWindows = {
-    { class = "^es-de$" },
-    { class = "^retroarch$" },
-    { class = "^dolphin-emu" },
-    { class = "^pcsx2" },
-}
-
-hl.workspace_rule({
-    workspace = "name:" .. emulationWs,
-    persistent = true,
-    monitor    = "desc:REPLACE_WITH_OBSERVED_DESCRIPTION",
-})
-
-for i, entry in ipairs(emulationWindows) do
-    hl.window_rule({
-        name      = "emulation-ws-" .. i,
-        match     = { class = entry.class, title = entry.title },
-        workspace = emulationWs .. " silent",
-    })
-end
-{{- end }}
-```
-
-Apply and verify the monitor:
+Verify (already deployed; re-check after template edits):
 
 ```bash
 chezmoi apply
-hyprctl monitors
-```
-
-Expect the dongle at `3840x2160@60` and the 57" unchanged at
-7680x2160@120 scale 1.25. Then verify each app's window class (expected
-class for ES-DE is exactly `es-de`) and that it lands on the emulation
-workspace:
-
-```bash
+hyprctl monitors        # dongle at 3840x2160@60, 57" unchanged at 0x0
+hyprctl workspaces      # gaming on DP-5, emulation on HDMI-A-1
 es-session start && sleep 3
 hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspace"]["name"]) for c in json.load(sys.stdin)]'
 ```
 
 Expect an `es-de` row on workspace `emulation`, desktop focus unmoved.
-Repeat for one emulator of each type (`retroarch` from a terminal,
-launch `dolphin-emu` and `pcsx2-qt` from the app grid, then close
-them). If a class differs from the regex table, correct
-`emulationWindows` and re-apply.
+Classes were verified this way for es-de, RetroArch (AppImage) and
+Dolphin (Flatpak); PCSX2 is unverified until installed.
 
-#### 4.2 Sunshine: KMS capture + autostart
+#### 4.2 Sunshine: KMS capture + autostart (DONE — as-built)
 
-Discover the dongle's DRM connector name:
-
-```bash
-for c in /sys/class/drm/card*-HDMI-* /sys/class/drm/card*-DP-*; do
-  echo "$(basename "$c"): $(cat "$c/status" 2>/dev/null)"
-done
-```
-
-Expect the dongle's connector (e.g. `card1-HDMI-A-1`) to show
-`connected`. Add the two manual keys to `~/.config/sunshine/sunshine.conf`
-(that file stays hand-managed by design):
+Two manual keys in `~/.config/sunshine/sunshine.conf` (hand-managed by
+design):
 
 ```ini
 capture = kms
-output_name = card1-HDMI-A-1
+output_name = HDMI-A-1
 ```
 
-(substituting the observed connector).
+**`output_name` is the BARE connector name — no `card1-` prefix.** The
+name→connector mapping needs Sunshine ≥ 2026.906; this machine runs
+`2026.914.233613` from the lizardbyte stable copr
+(`copr:copr.fedorainfracloud.org:lizardbyte:stable`). Older builds (the
+May 2026 `@commandline` 2026.516-style install was one) parse
+`output_name` as a NUMERIC monitor index only — any name string becomes
+garbage and every encoder probe dies with
+`Couldn't find monitor [<huge number>]`.
 
-Verify capture privileges:
+**Hardware encoding needs RPM Fusion's `mesa-va-drivers-freeworld`.**
+Fedora's stock Mesa VA driver exposes AV1-only encode on the 7900 XTX,
+so without it Sunshine silently falls back to software x264:
 
 ```bash
-command -v sunshine >/dev/null || echo "sunshine not on PATH — check the Sunshine install before continuing"
-getcap "$(readlink -f "$(command -v sunshine)")"
+sudo dnf install mesa-va-drivers-freeworld libva-utils
+vainfo --display drm --device /dev/dri/renderD128 | grep -E "H264|HEVC"
 ```
 
-Expect `cap_sys_admin`. If empty, run
-`sudo setcap cap_sys_admin+p <that path>` — and see maintenance below,
-because package updates can reset it.
+Both codecs must show `VAEntrypointEncSlice`.
+
+Capture privileges (package updates can reset them — see Maintenance):
+
+```bash
+getcap "$(readlink -f "$(command -v sunshine)")"   # expect cap_sys_admin,cap_sys_nice=p
+```
 
 The user service is **`app-dev.lizardbyte.app.Sunshine.service`** —
-NOT `sunshine.service`. Despite the name, this is NOT a Flatpak:
-Sunshine is installed as a native RPM
-(`Sunshine-2026.516.143833-1.fc44.x86_64` owns `/usr/bin/sunshine`),
-and the RPM itself ships the unit at
-`/usr/lib/systemd/user/app-dev.lizardbyte.app.Sunshine.service`
-(`ExecStart=/usr/bin/sunshine`) — the unit name merely looks
-reversed-DNS/Flatpak-style. Config lives at the native path
-`~/.config/sunshine/`. Discover the actual unit name before acting on
-it, and re-verify these facts if Sunshine is ever reinstalled (e.g. as
-a Flatpak, which would change all of them):
+NOT `sunshine.service`. Despite the name it is NOT a Flatpak: a native
+RPM from the copr owns `/usr/bin/sunshine` and ships the unit
+(`ExecStart=/usr/bin/sunshine`); config lives at `~/.config/sunshine/`.
+Discover the actual unit name before acting on it, and re-verify these
+facts if Sunshine is ever reinstalled as a Flatpak (which would change
+all of them):
 
 ```bash
 systemctl --user list-units | grep -i sunshine
-# expected: an app-dev.lizardbyte.app.Sunshine.service ... line
 ```
 
-It is currently DISABLED for autostart, so enable it once (use the
-discovered name):
-
-```bash
-systemctl --user enable --now app-dev.lizardbyte.app.Sunshine.service
-```
-
-After conf changes, restart with the same name:
+Autostart is ENABLED (`systemctl --user enable --now
+app-dev.lizardbyte.app.Sunshine.service`). After conf changes, restart
+with the same name, then verify the log:
 
 ```bash
 systemctl --user restart app-dev.lizardbyte.app.Sunshine.service
+grep -E "Mapped|Found .* encoder" ~/.config/sunshine/sunshine.log
+```
+
+Expected lines:
+
+```text
+Mapped 'HDMI-A-1' to kmsgrab monitor index N
+Found H.264 encoder: h264_vaapi [vaapi]
 ```
 
 Sanity-check the Web UI (`https://localhost:47990` → Applications):
-Emulation entries listed, no parse errors in
-`~/.config/sunshine/sunshine.log`. On the Shield, Moonlight → this host
-should show the Emulation entries in the grid.
+Emulation entries listed, no parse errors. On the Shield, Moonlight →
+this host should show the Emulation entries in the grid.
 
 #### 4.3 ES-DE first run
 
@@ -307,11 +238,17 @@ NOT chezmoi-managed.
 
 #### 4.4 RetroArch runtime verification
 
+RetroArch runs as the AppImage (`~/AppImages/retroarch.appimage`). It
+is currently WINDOWED at 3072x1728 for local testing — once streaming
+is verified, flip `video_fullscreen = "true"` (and drop the window
+geometry) in `dot_config/retroarch/retroarch.cfg` (a note in the file
+marks the spot).
+
 First launch must use the Wayland context, not SDL — Vulkan ICD issues
 on the dongle GPU would surface here:
 
 ```bash
-retroarch --verbose --menu & sleep 4; pkill -x retroarch
+~/AppImages/retroarch.appimage --verbose --menu & sleep 4; pkill -x retroarch.appim
 ```
 
 Check the context driver in the verbose output (wayland expected). Then
@@ -322,7 +259,8 @@ hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspac
 chezmoi diff ~/.config/retroarch/retroarch.cfg
 ```
 
-Expect `retroarch` on workspace `emulation` and a clean `chezmoi diff`.
+Expect a `com.libretro.RetroArch` row on workspace `emulation` and a
+clean `chezmoi diff`.
 
 With a paired controller (USB locally, or through a Moonlight test
 stream), verify the combos: L3+R3 toggles the RetroArch menu;
@@ -335,20 +273,22 @@ this build, correct the `input_*` keys in
 Their ini hotkey tokens encode device-specific button IDs, so hotkeys
 are mapped through each UI once:
 
-- **Dolphin** — launch `dolphin-emu`. Bind the exit hotkey:
-  **Options → Hotkey Settings → Exit → (click the binding field) →
-  hold Select, press Start**. For start-in-fullscreen: if a
-  fullscreen-on-start toggle exists in **Options → Configure…**,
+- **Dolphin** — launch `flatpak run org.DolphinEmu.dolphin-emu`. Bind
+  the exit hotkey: **Options → Hotkey Settings → Exit → (click the
+  binding field) → hold Select, press Start**. For start-in-fullscreen:
+  if a fullscreen-on-start toggle exists in **Options → Configure…**,
   enable it; otherwise enable **View → Fullscreen** once, quit, then
-  locate the persisted key:
+  locate the persisted key — NOTE the Flatpak keeps its config under
+  `~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/`:
 
   ```bash
-  grep -ri fullscreen ~/.config/dolphin-emu/*.ini
+  grep -ri fullscreen ~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/*.ini
   ```
 
   and set that key to `True` in the ini.
 
-- **PCSX2** — launch `pcsx2-qt`. **Settings → Hotkeys**: bind
+- **PCSX2** — NOT installed yet; decide dnf (`pcsx2-qt` binary) vs
+  Flatpak first. Then in **Settings → Hotkeys**: bind
   **Toggle Fullscreen**, and the shutdown/close entry (search the list
   for "Shutdown"/"Close"), each to Select(hold)+Start or the same
   convention. Set start-in-fullscreen under **Settings → Graphics or
@@ -416,7 +356,8 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 
 | Symptom | Diagnose | Fix |
 |---|---|---|
-| Stream fails / black screen | `es-session status` (dongle row); `~/.config/sunshine/sunshine.log` | Dongle must be present; `output_name` in `~/.config/sunshine/sunshine.conf` must match a `connected` connector — re-run the `/sys/class/drm` discovery loop in 4.2; check `getcap` on the sunshine binary; restart `app-dev.lizardbyte.app.Sunshine.service` |
+| Stream fails / black screen | `es-session status` (dongle row); `~/.config/sunshine/sunshine.log` | Dongle must be present; `output_name` in `~/.config/sunshine/sunshine.conf` must be the BARE connector name (`HDMI-A-1`, no `card1-` prefix) on Sunshine ≥ 2026.906 — a `Couldn't find monitor [<huge number>]` loop means the value isn't a valid name/index; check `getcap` on the sunshine binary; restart `app-dev.lizardbyte.app.Sunshine.service` |
+| Stream works but CPU-bound / software encode in log (`Found H.264 encoder: libx264 [software]`) | `vainfo --display drm --device /dev/dri/renderD128 \| grep -E "H264\|HEVC"` | Both codecs must show `VAEntrypointEncSlice`; if missing, install `mesa-va-drivers-freeworld` (RPM Fusion) and restart Sunshine |
 | Stream connects but workspace is empty / ES-DE not running | Sunshine's user-service environment is snapshotted at service start and may lack `WAYLAND_DISPLAY` when enabled for autostart before the Hyprland session imports its env; check `systemctl --user show-environment \| grep WAYLAND_DISPLAY` | `systemctl --user restart app-dev.lizardbyte.app.Sunshine.service` |
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check Nimbus is powered on and the share still permits guest access (if auth was enabled, see setup step 1) |
 | Emulator window shows on the desktop, not in the stream | `hyprctl -j clients` — compare the reported class against the `emulationWindows` regexes | Correct the class regex in `dot_config/hypr/hyprland.lua.tmpl` and `chezmoi apply` |
@@ -427,13 +368,19 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 ## Maintenance
 
 - **Sunshine updates reset capabilities.** Package updates can drop
-  `cap_sys_admin`, breaking KMS capture. Re-check and re-apply:
+  `cap_sys_admin`, breaking KMS capture. Upgrade only from the
+  lizardbyte stable copr (name-based `output_name` needs ≥ 2026.906 —
+  don't fall back to an old `@commandline` RPM). Re-check and re-apply:
 
   ```bash
   command -v sunshine >/dev/null || echo "sunshine not on PATH — check the Sunshine install before continuing"
   getcap "$(readlink -f "$(command -v sunshine)")"
   sudo setcap cap_sys_admin+p "$(readlink -f "$(command -v sunshine)")"
   ```
+
+- **Hardware encode depends on `mesa-va-drivers-freeworld`** (RPM
+  Fusion). Mesa upgrades keep it, but if streams ever fall back to
+  software x264, re-check with `vainfo` (troubleshooting table).
 
 - **Dongle description changes** (new dongle, GPU swap, firmware
   quirk): re-run `hyprctl monitors all`, then update the `desc:` value
@@ -481,11 +428,13 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | `dot_config/retroarch/retroarch.cfg` → `~/.config/retroarch/retroarch.cfg` | chezmoi | Runtime saves disabled; see recovery in Maintenance |
 | `run_once_install-nimbus-roms-mount.sh.tmpl` | chezmoi (`run_once`) | Installs the systemd units below; see the re-run trap in setup step 2 |
 | `~/.config/chezmoi/chezmoi.toml` | Hand (never committed) | `[data.machine] profile`, `[data.nimbus] romsShare` |
-| `~/.config/sunshine/sunshine.conf` | Hand | Two keys: `capture = kms`, `output_name` |
+| `~/.config/sunshine/sunshine.conf` | Hand | Two keys: `capture = kms`, `output_name` = bare connector name (`HDMI-A-1`) |
+| `Sunshine` RPM (lizardbyte stable copr), `mesa-va-drivers-freeworld`, `libva-utils` | dnf (hand) | Version floor and freeworld rationale in setup 4.2 / Maintenance |
 | `/etc/cifs-creds-nimbus` | Hand — only if auth is ever enabled | Mode 600; not needed while the share is public/guest |
 | `/etc/systemd/system/mnt-nimbus-roms.{mount,automount}` | Generated by the `run_once` installer | Idempotent — rewritten only on content change |
 | `~/AppImages/es-de.AppImage` | Hand / GearLever | ES-DE 3.5.0 |
+| `~/AppImages/retroarch.appimage` | Hand | Cores via in-app Core Downloader (setup 3) |
 | `~/ES-DE/**` (`es_settings.xml`, logs, scraped media) | ES-DE runtime | Logs at `~/ES-DE/logs/es_log.txt` |
-| `~/.config/dolphin-emu/*.ini`, PCSX2 inis | Emulator runtime | Hotkeys set via each UI (setup 4.5) |
+| `~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/*.ini`, PCSX2 inis | Emulator runtime | Flatpak path; hotkeys set via each UI (setup 4.5) |
 | `~/.config/sunshine/{sunshine_state.json,sunshine.log,credentials}` | Sunshine runtime | Ignored via `.chezmoiignore.tmpl` |
 | `~/.config/retroarch/{saves,states,playlists,thumbnails,autoconfig}` | RetroArch runtime | Saves/states are local on host by design |
