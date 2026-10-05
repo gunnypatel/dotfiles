@@ -118,12 +118,12 @@ As installed on this machine:
   flatpak override --user --filesystem=/mnt/nimbus/roms:ro org.DolphinEmu.dolphin-emu
   ```
 
-- **PCSX2** — NOT installed yet (dnf vs Flatpak decision pending; the
-  routing regexes in the Hyprland config already cover both packagings).
+- **PCSX2** — AppImage at `~/AppImages/pcsx2.appimage` (window class
+  `pcsx2-qt`, process comm `pcsx2.appimage` — both verified live).
 
 `es-session`'s `EMULATORS` list matches the installed launchers:
-`retroarch retroarch.appim dolphin-emu pcsx2-qt` (`retroarch.appim`
-covers the AppImage's 15-char comm truncation).
+`retroarch retroarch.appim dolphin-emu pcsx2.appimage` (AppImage comms;
+the kernel truncates comm at 15 chars — hence `retroarch.appim`).
 
 ### 4. When the dongle arrives
 
@@ -158,8 +158,10 @@ hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspac
 ```
 
 Expect an `es-de` row on workspace `couch`, desktop focus unmoved.
-Classes were verified this way for es-de, RetroArch (AppImage) and
-Dolphin (Flatpak); PCSX2 is unverified until installed.
+Classes verified this way for es-de, RetroArch (AppImage), Dolphin
+(Flatpak) and PCSX2 (AppImage). NOTE: Hyprland 0.56 `match.class` is
+FULLMATCH — a bare `pcsx2` alternative does NOT catch `pcsx2-qt`, so
+the table enumerates concrete per-packaging classes.
 
 #### 4.2 Sunshine: KMS capture + autostart (DONE — as-built)
 
@@ -287,8 +289,8 @@ are mapped through each UI once:
 
   and set that key to `True` in the ini.
 
-- **PCSX2** — NOT installed yet; decide dnf (`pcsx2-qt` binary) vs
-  Flatpak first. Then in **Settings → Hotkeys**: bind
+- **PCSX2** — launch `~/AppImages/pcsx2.appimage` (class `pcsx2-qt`).
+  In **Settings → Hotkeys**: bind
   **Toggle Fullscreen**, and the shutdown/close entry (search the list
   for "Shutdown"/"Close"), each to Select(hold)+Start or the same
   convention. Set start-in-fullscreen under **Settings → Graphics or
@@ -297,7 +299,7 @@ are mapped through each UI once:
 - **Exit check per emulator** — launch one GameCube game and one PS2
   game from the ES-DE grid (streamed or local): each opens fullscreen
   on the dongle; Select+Start returns to the ES-DE grid with the
-  emulator process gone (`pgrep -x dolphin-emu`, `pgrep -x pcsx2-qt`
+  emulator process gone (`pgrep -x dolphin-emu`, `pgrep -x pcsx2.appimage`
   empty). Window placement is verified via the `hyprctl -j clients`
   one-liner above, plus a visual check through a Moonlight test stream.
 
@@ -452,6 +454,6 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | `~/AppImages/es-de.AppImage` | Hand / GearLever | ES-DE 3.5.0 |
 | `~/AppImages/retroarch.appimage` | Hand | Cores via in-app Core Downloader (setup 3) |
 | `~/ES-DE/**` (`es_settings.xml`, logs, scraped media) | ES-DE runtime | Logs at `~/ES-DE/logs/es_log.txt` |
-| `~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/*.ini`, PCSX2 inis | Emulator runtime | Flatpak path; hotkeys set via each UI (setup 4.5) |
+| `~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/*.ini`, `~/.config/PCSX2/**` | Emulator runtime | Flatpak / AppImage paths; hotkeys set via each UI (setup 4.5) |
 | `~/.config/sunshine/{sunshine_state.json,sunshine.log,credentials}` | Sunshine runtime | Ignored via `.chezmoiignore.tmpl` |
 | `~/.config/retroarch/{saves,states,playlists,thumbnails,autoconfig}` | RetroArch runtime | Saves/states are local on host by design |

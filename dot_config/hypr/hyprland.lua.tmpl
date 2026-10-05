@@ -248,17 +248,17 @@ end
 -- Couch workspace: lives on the dongle output; Sunshine streams it to
 -- the Shield. Hosts more than emulation (e.g. streamed Steam Big
 -- Picture), hence the name. Same pattern as gamingWs above: apps arrive
--- silently, so desktop focus never moves. es-de/RetroArch/dolphin
--- classes verified via `hyprctl clients`; pcsx2 is unverified (not
--- installed). The dolphin and pcsx2 patterns run unanchored on the
--- right to tolerate packaging suffixes (e.g. pcsx2-qt).
+-- silently, so desktop focus never moves.
+-- Classes verified via `hyprctl clients`. match.class is FULLMATCH, not
+-- substring search (verified live: a bare `pcsx2` alternative does NOT
+-- catch `pcsx2-qt`) — enumerate each packaging's concrete class.
 local couchWs = "couch"
 
 local emulationWindows = {
     { class = "^es-de$" },
     { class = "^(com\\.libretro\\.RetroArch|retroarch)$" },
-    { class = "^(org\\.DolphinEmu\\.dolphin-emu|dolphin-emu)" },
-    { class = "^(org\\.pcsx2\\.PCSX2|pcsx2)" },
+    { class = "^(org\\.DolphinEmu\\.dolphin-emu|dolphin-emu)$" },
+    { class = "^(org\\.pcsx2\\.PCSX2|pcsx2|pcsx2-qt)$" },
 }
 
 -- default = true makes "couch" the dongle output's own workspace, so

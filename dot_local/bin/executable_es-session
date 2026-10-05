@@ -12,7 +12,7 @@ set -eu
 ESDE_BIN="${ESDE_BIN:-$HOME/AppImages/es-de.AppImage}"
 MOUNT_POINT=/mnt/nimbus/roms
 DONGLE_DESC="${DONGLE_DESC:-WOIEYEK}" # match LLV WOIEYEK 4K120 dummy plug
-EMULATORS="retroarch retroarch.appim dolphin-emu pcsx2-qt" # retroarch.appim = AppImage comm, 15-char truncation
+EMULATORS="retroarch retroarch.appim dolphin-emu pcsx2.appimage" # AppImage comms; kernel truncates comm at 15 chars (retroarch.appim)
 
 notify() {
     noctalia msg notification-show "$1" "$2" 2>/dev/null || true
