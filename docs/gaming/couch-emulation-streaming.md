@@ -320,10 +320,17 @@ Each step must pass before the next:
    on workspace `couch`; desktop focus never moved.
 3. **Script** — `start` twice → one PID; `status` accurate; `stop`
    clears everything.
-4. **Stream** — Shield Moonlight → "Emulation": set the host's
-   streaming resolution to 3840x2160@60 in Moonlight settings (Shield
-   on Ethernet for the HEVC bitrate); stats overlay shows 4K + HEVC;
-   Sunshine log confirms the KMS backend; controller + audio work.
+4. **Stream** — Shield Moonlight → "Emulation": set the host's streaming
+   resolution to 3840x2160@60 in Moonlight settings (Shield on Ethernet
+   for the HEVC bitrate); stats overlay shows 4K + HEVC; Sunshine log
+   confirms the KMS backend; controller + audio work. **Sharpness A/B
+   (decision: dynamic scale flip)** — mid-stream, flip the dongle to
+   scale 1 and compare detail (ES-DE menu text, in-game edges):
+   `hyprctl eval 'hl.monitor({ output = "desc:LLV WOIEYEK 4K120 0x03F92F10", mode = "3840x2160@60", position = "6144x0", scale = 1 })'`,
+   then restore the same call with `scale = 1.25`. Visibly sharper at 1
+   → build the Sunshine prep-cmd scale flip (deferred feature, needs its
+   own spec — trade-off: wx/GTK desktop apps break while a stream is
+   live); identical → keep 1.25 and drop the idea.
 5. **Input** — Select+Start exits each emulator back to ES-DE; L3+R3
    opens the RetroArch menu.
 6. **Couch toggle + Steam (Couch)** — on the host, SUPER+Shift+E moves
