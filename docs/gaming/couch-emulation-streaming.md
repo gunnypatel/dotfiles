@@ -133,9 +133,15 @@ The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
 `card1-HDMI-A-1`, Hyprland name `HDMI-A-1`) is configured in
 `dot_config/hypr/hyprland.lua.tmpl`, personal-profile-gated:
 
-- Monitor entry `3840x2160@60` at logical `6144x0`, scale 1. The
+- Monitor entry `3840x2160@60` at logical `6144x0`, scale **1.25**. The
   position is in LOGICAL coordinates — the 57" at scale 1.25 occupies
   0–6143 (7680/1.25) — not the physical `7680x0` the plan draft had.
+  The dongle scale MUST match the Samsung: a mixed-scale session
+  (dongle at 1) triggers black overlay panels in wx/GTK apps —
+  OrcaSlicer/OrcaSlicer#12330, verified 2026-10-04 (clean at uniform
+  scale on both runtimes 50.4/50.5; broken mixed on both). Logical
+  resolution is 3072x1728; Sunshine still captures the full
+  3840x2160 framebuffer.
 - `couch` workspace bound to the dongle (`persistent` +
   `default`), window rules sending the es-de / RetroArch / Dolphin /
   PCSX2 classes there silently. The dolphin/pcsx2 regexes are
@@ -378,6 +384,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check Nimbus is powered on and the share still permits guest access (if auth was enabled, see setup step 1) |
 | Emulator window shows on the desktop, not in the stream | `hyprctl -j clients` — compare the reported class against the `emulationWindows` regexes | Correct the class regex in `dot_config/hypr/hyprland.lua.tmpl` and `chezmoi apply` |
 | Steam game/BPM opens on the gaming workspace instead of the couch (mid-session) | The runtime rule was dropped — a config reload or compositor restart mid-session clears eval-added rules | Re-launch via the "Steam (Couch)" Moonlight entry (its prep `do` re-installs the rule), or end the session and start it again |
+| wx/GTK app shows black overlay panels (e.g. OrcaSlicer print-time/filament info boxes) | `hyprctl monitors` — a mixed-scale session (any output whose scale differs from the others) triggers it; upstream OrcaSlicer #12330 | Keep all outputs at one scale — the dongle runs 1.25 to match the 57". No per-app GDK env fix exists (`GDK_SCALE` is integer-only/X11-only, `GDK_DPI_SCALE` is fonts-only/X11-only) |
 | No controller input in the stream | Moonlight's per-host settings on the Shield | Input must be enabled for this host in Moonlight settings; verify the combos work locally over USB first to isolate host vs client |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
 | First ROM browse after idle is slow | Expected behavior | Automount penalty: `TimeoutIdleSec=600` unmounts when idle; the next access pays a seconds-long remount |

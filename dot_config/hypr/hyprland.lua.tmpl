@@ -27,13 +27,17 @@ hl.monitor({
 -- KMS-captures only this output; windows/focus reach it solely via the
 -- couch workspace rules further down. The pointer CAN edge-cross
 -- onto it like any second monitor — harmless by design.
+-- Scale MUST match the Samsung (1.25): a mixed-scale session (e.g. dongle
+-- at 1) triggers black overlay panels in wx/GTK apps — OrcaSlicer
+-- #12330, verified 2026-10-04. Logical res is 3072x1728; Sunshine still
+-- captures the full 3840x2160 framebuffer.
 local dongleDesc = "LLV WOIEYEK 4K120 0x03F92F10"
 
 hl.monitor({
     output   = "desc:" .. dongleDesc,
     mode     = "3840x2160@60",
     position = "6144x0",
-    scale    = 1,
+    scale    = 1.25,
 })
 {{- end }}
 
@@ -269,6 +273,28 @@ hl.workspace_rule({
     persistent = true,
     default    = true,
 })
+
+-- The dongle is the exception, not a second desktop: ONLY the couch
+-- workspace may live on it. Hyprland's workspace restore keys on the
+-- connector NAME (m_lastMonitor), which breaks whenever the GPU
+-- re-enumerates the Samsung's DP port across suspend (hyprland.log
+-- showed DP-4 -> DP-5): every numbered workspace that fled to the
+-- dongle during the disconnect is stranded — only rule-bound
+-- workspaces (couch, gaming) get pulled home on reconnect. So after
+-- any monitor is (re)added, sweep the dongle and return everything
+-- that isn't couch to the 57". Handles any workspace — numbered,
+-- renamed, named — with no whitelist to maintain.
+hl.on("monitor.added", function()
+    for _, ws in ipairs(hl.get_workspaces()) do
+        if not ws.special and ws.name ~= couchWs and ws.monitor
+            and ws.monitor.description == dongleDesc then
+            hl.dispatch(hl.dsp.workspace.move({
+                workspace = ws.id >= 0 and tostring(ws.id) or ("name:" .. ws.name),
+                monitor   = "desc:" .. samsungDesc,
+            }))
+        end
+    end
+end)
 
 for i, entry in ipairs(emulationWindows) do
     hl.window_rule({
