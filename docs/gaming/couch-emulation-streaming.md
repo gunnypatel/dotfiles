@@ -4,8 +4,9 @@ Stream ES-DE and the RetroArch / Dolphin / PCSX2 emulators from the
 Hyprland host to the Shield TV over Moonlight without touching the
 desktop session: a 4K dummy plug presents a dedicated DRM connector that
 Hyprland pins at 3840x2160@60, a persistent `couch` workspace bound
-to that output collects every emulator window via silent window rules,
-and Sunshine KMS-captures only that connector. ROMs automount over CIFS
+to that output receives every streamed window via the `couch-route`
+watcher while a stream is active, and Sunshine KMS-captures only that
+connector. ROMs automount over CIFS
 from Nimbus, and `es-session` gives idempotent start/stop/status from
 the Sunshine app grid.
 
@@ -26,16 +27,19 @@ Sunshine (host user service, KMS capture)
 4K dummy plug (spare GPU port, pinned 3840x2160@60)
    ▼
 Hyprland "couch" workspace (persistent, dongle-bound)
-   │  silent window rules: ^es-de$, ^retroarch$, ^dolphin-emu, ^pcsx2
-   ▼
+    │  couch-route watcher (Sunshine prep start/stop), ROUTES classes:
+    │  steam_app_*, Steam Big Picture Mode, ^es-de$, ^retroarch$,
+    │  ^dolphin-emu, ^pcsx2
+    ▼
 ES-DE ── launches ──► RetroArch / Dolphin / PCSX2
    ▼
 /mnt/nimbus/roms (CIFS automount from Nimbus, TimeoutIdleSec=600)
 ```
 
-Daily flow: pick **Emulation** in Moonlight → Sunshine runs
-`es-session start` → ES-DE launches (or is reused) on the couch
-workspace → play. Select(hold)+Start exits an emulator back to the ES-DE
+Daily flow: pick **Emulation** in Moonlight → Sunshine starts the
+`couch-route` watcher and runs `es-session start` → ES-DE launches
+(or is reused) and the watcher routes it to the couch workspace →
+play. Select(hold)+Start exits an emulator back to the ES-DE
 grid; L3+R3 opens the RetroArch menu. Dropping the stream changes
 nothing on the host (ES-DE persists between streams); **Emulation
 (Stop)** tears the session down on demand.
@@ -142,11 +146,13 @@ The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
   scale on both runtimes 50.4/50.5; broken mixed on both). Logical
   resolution is 3072x1728; Sunshine still captures the full
   3840x2160 framebuffer.
-- `couch` workspace bound to the dongle (`persistent` +
-  `default`), window rules sending the es-de / RetroArch / Dolphin /
-  PCSX2 classes there silently. The dolphin/pcsx2 regexes are
-  deliberately unanchored on the right (packaging suffixes such as
-  `pcsx2-qt`).
+- `couch` workspace bound to the dongle (`persistent` + `default`).
+  Routing is NOT static: couch is used only while streaming, and
+  runtime window rules lose to config rules (verified 2026-10-11), so
+  the `couch-route` watcher (`dot_local/bin/executable_couch-route`,
+  its ROUTES table is the registry) moves streamed windows to couch
+  during a session. Local launches land on the current workspace —
+  for local play, pull couch to the 57" with SUPER+SHIFT+E first.
 - The `gaming` workspace is pinned to the Samsung
   (`desc:Samsung Electric Company Odyssey G95NC`): a newly appeared
   output claims the last unpinned workspace, so without the pin the
@@ -159,15 +165,17 @@ Verify (already deployed; re-check after template edits):
 chezmoi apply
 hyprctl monitors        # dongle at 3840x2160@60, 57" unchanged at 0x0
 hyprctl workspaces      # gaming on DP-5, couch on HDMI-A-1
-es-session start && sleep 3
+couch-route start && es-session start && sleep 3
 hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspace"]["name"]) for c in json.load(sys.stdin)]'
 ```
 
-Expect an `es-de` row on workspace `couch`, desktop focus unmoved.
-Classes verified this way for es-de, RetroArch (AppImage), Dolphin
-(Flatpak) and PCSX2 (AppImage). NOTE: Hyprland 0.56 `match.class` is
-FULLMATCH — a bare `pcsx2` alternative does NOT catch `pcsx2-qt`, so
-the table enumerates concrete per-packaging classes.
+(Routing needs the watcher — with no Sunshine stream active, start it
+manually as shown; `couch-route stop` when done.) Expect an `es-de` row
+on workspace `couch`, desktop focus unmoved. Classes verified this way
+for es-de, RetroArch (AppImage), Dolphin (Flatpak) and PCSX2 (AppImage).
+NOTE: the ROUTES regexes in `couch-route` are fullmatch — enumerate
+concrete per-packaging classes (a bare `pcsx2` alternative does NOT
+catch `pcsx2-qt`).
 
 #### 4.2 Sunshine: KMS capture + autostart (DONE — as-built)
 
@@ -357,9 +365,11 @@ From the couch (Shield):
   then ES-DE. Leaving the session running is also fine (persistent by
   design).
 - **Moonlight → "Steam (Couch)"** — opens Big Picture routed to the
-  couch output; any game launched from it stays there for the duration
-  of the stream. Ends cleanly via Sunshine's undo (closes Big Picture,
-  drops the runtime routing rule).
+   couch output; any game launched from it stays there for the duration
+   of the stream (the `couch-route` watcher enforces this — expect up
+   to ~1s before a new window hops to couch). Ends cleanly via
+   Sunshine's undo (stops the watcher, closes Big Picture, moves Steam
+   windows back to gaming).
 
 From the host:
 
@@ -389,9 +399,8 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | Stream works but CPU-bound / software encode in log (`Found H.264 encoder: libx264 [software]`) | `vainfo --display drm --device /dev/dri/renderD128 \| grep -E "H264\|HEVC"` | Both codecs must show `VAEntrypointEncSlice`; if missing, install `mesa-va-drivers-freeworld` (RPM Fusion) and restart Sunshine |
 | Stream connects but workspace is empty / ES-DE not running | Sunshine's user-service environment is snapshotted at service start and may lack `WAYLAND_DISPLAY` when enabled for autostart before the Hyprland session imports its env; check `systemctl --user show-environment \| grep WAYLAND_DISPLAY` | `systemctl --user restart app-dev.lizardbyte.app.Sunshine.service` |
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check Nimbus is powered on and the share still permits guest access (if auth was enabled, see setup step 1) |
-| Emulator window shows on the desktop, not in the stream | `hyprctl -j clients` — compare the reported class against the `emulationWindows` regexes | Correct the class regex in `dot_config/hypr/hyprland.lua.tmpl` and `chezmoi apply` |
-| Steam game/BPM opens on the gaming workspace instead of the couch (mid-session) | The runtime rule was dropped — a config reload or compositor restart mid-session clears eval-added rules | Re-launch via the "Steam (Couch)" Moonlight entry (its prep `do` re-installs the rule), or end the session and start it again |
-| Steam (Couch) starts but BPM shows the DESKTOP Steam window / lands on gaming (session start) | Steam is single-instance: if desktop Steam was already running (autostart/login), `steam://open/bigpicture` reuses its existing window — window rules only apply to NEW windows | Handled by the entry's prep commands: `do` moves any existing steam windows to the couch output before BPM opens; `undo` moves them back to `gaming` after the stream (verified 2026-10-11; root cause: boot-autostarted Steam parked unsigned-in on gaming) |
+| Emulator window shows on the desktop, not in the stream | `couch-route status` (watcher must be `running`); `hyprctl -j clients` — compare the class against the ROUTES table | `couch-route start` if the watcher died; correct/add the class in `dot_local/bin/executable_couch-route` ROUTES and `chezmoi apply`. No stream active = no couch routing (by design — local launches stay local) |
+| Steam BPM or a game stays on gaming during a stream | `couch-route status` — watcher must be `running`; `pgrep -x sunshine` | Watcher or Sunshine died without undo: `couch-route start`. New/shortcut app class not matched: add it to ROUTES. (History: the pre-2026-10-11 runtime-rule prep never worked — eval-added rules lose to config rules; the watcher replaced it) |
 | wx/GTK app shows black overlay panels (e.g. OrcaSlicer print-time/filament info boxes) | `hyprctl monitors` — a mixed-scale session (any output whose scale differs from the others) triggers it; upstream OrcaSlicer #12330 | Keep all outputs at one scale — the dongle runs 1.25 to match the 57". No per-app GDK env fix exists (`GDK_SCALE` is integer-only/X11-only, `GDK_DPI_SCALE` is fonts-only/X11-only) |
 | No controller input in the stream | Moonlight's per-host settings on the Shield | Input must be enabled for this host in Moonlight settings; verify the combos work locally over USB first to isolate host vs client |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
@@ -456,9 +465,10 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 
 | Path | Managed by | Notes |
 |---|---|---|
-| `dot_config/hypr/hyprland.lua.tmpl` → `~/.config/hypr/hyprland.lua` | chezmoi | Dongle monitor + couch routing, `personal`-gated |
+| `dot_config/hypr/hyprland.lua.tmpl` → `~/.config/hypr/hyprland.lua` | chezmoi | Dongle monitor + couch workspace binding (no routing rules), `personal`-gated |
+| `dot_local/bin/executable_couch-route` → `~/.local/bin/couch-route` | chezmoi | Stream-scoped couch routing; ROUTES = registry of streamed-app classes |
 | `dot_local/bin/executable_es-session` → `~/.local/bin/es-session` | chezmoi | `EMULATORS` must match installed binary names |
-| `dot_config/sunshine/apps.json` → `~/.config/sunshine/apps.json` | chezmoi | App grid incl. Emulation / Emulation (Stop) |
+| `dot_config/sunshine/apps.json` → `~/.config/sunshine/apps.json` | chezmoi | App grid; Steam (Couch) + Emulation preps start/stop couch-route |
 | `dot_config/retroarch/retroarch.cfg` → `~/.config/retroarch/retroarch.cfg` | chezmoi | Runtime saves disabled; see recovery in Maintenance |
 | `run_once_install-nimbus-roms-mount.sh.tmpl` | chezmoi (`run_once`) | Installs the systemd units below; see the re-run trap in setup step 2 |
 | `~/.config/chezmoi/chezmoi.toml` | Hand (never committed) | `[data.machine] profile`, `[data.nimbus] romsShare` |

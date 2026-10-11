@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Couch route watcher: while a Sunshine stream is active, route streamed
+apps' windows to the couch workspace.
+
+One mechanism for every Sunshine app (Steam, emulation, future entries):
+Sunshine prep-cmds start/stop this watcher, and the ROUTES table below is
+the single registry of window classes that belong on couch. Couch is used
+ONLY while streaming — there are no static window rules for it.
+
+Why a process and not rules: runtime rules added via `hyprctl eval` LOSE
+to config rules (verified live 2026-10-11), static rules can only mean
+"always -> couch" (wrong for dual-use apps like Steam, and dropped by
+design for everything else), and Hyprland 0.56.2 never emits window.open
+events for XWayland windows, so config-side event routing is unavailable.
+Hence: a poller.
+
+  start    idempotently start the watcher (backgrounds itself)
+  stop     stop the watcher (moving windows back to gaming is done by
+           the Sunshine prep undo, not here)
+  status   watcher state + windows pending a route
+  watch    internal: the background loop
+
+Each matching mapped window not on couch is moved there silently once
+and fullscreen-set once; the watcher never fights the user afterwards.
+Exits when Sunshine dies. See docs/gaming/couch-emulation-streaming.md.
+"""
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+
+# Single registry of streamed-app windows — add future Sunshine apps
+# here (class is fullmatch; title, when set, is a prefix match on the
+# current title). Class spellings verified via `hyprctl clients`; note
+# packaging variants (e.g. pcsx2-qt vs pcsx2) must be enumerated.
+ROUTES = [
+    # Steam games launched from BPM (dual-use: the gaming-ws static rules
+    # send these to the gaming workspace for desktop play; the watcher
+    # overrides that during a stream)
+    {"class": r"steam_app_[0-9]+", "title": None},
+    # Big Picture Mode itself (maps with this title on the remap when
+    # desktop Steam is already running, and on fresh BPM starts)
+    {"class": r"steam", "title": "Steam Big Picture Mode"},
+    # Emulation
+    {"class": r"es-de", "title": None},
+    {"class": r"(com\.libretro\.RetroArch|retroarch)", "title": None},
+    {"class": r"(org\.DolphinEmu\.dolphin-emu|dolphin-emu)", "title": None},
+    {"class": r"(org\.pcsx2\.PCSX2|pcsx2|pcsx2-qt)", "title": None},
+]
+
+WS = "couch"
+POLL_SECS = 1.0
+PIDFILE = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "couch-route.pid"
+)
+
+
+def discover_sig():
+    """Make hyprctl work even if the env (e.g. after a Hyprland restart)
+    no longer carries the instance signature."""
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return
+    base = os.path.join(
+        os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "hypr"
+    )
+    try:
+        sigs = sorted(
+            ((os.path.getmtime(os.path.join(base, s)), s) for s in os.listdir(base)),
+            reverse=True,
+        )
+        if sigs:
+            os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = sigs[0][1]
+    except OSError:
+        pass
+
+
+def hyprctl(*args):
+    return subprocess.run(
+        ["hyprctl", *args], capture_output=True, text=True, check=False
+    )
+
+
+def sunshine_alive():
+    return subprocess.run(
+        ["pgrep", "-x", "sunshine"], capture_output=True
+    ).returncode == 0
+
+
+def build_matchers():
+    return [
+        (re.compile(r["class"]), r["title"]) for r in ROUTES
+    ]
+
+
+def matches(cls, title, matchers):
+    for class_re, title_prefix in matchers:
+        if class_re.fullmatch(cls) and (
+            title_prefix is None or title.startswith(title_prefix)
+        ):
+            return True
+    return False
+
+
+def pending_windows():
+    """Yield (address, class, title) for streamed-app windows not on couch."""
+    res = hyprctl("-j", "clients")
+    if res.returncode != 0:
+        return []
+    matchers = build_matchers()
+    out = []
+    for c in json.loads(res.stdout or "[]"):
+        if not c.get("mapped"):
+            continue
+        cls = c.get("class") or ""
+        title = c.get("title") or ""
+        if matches(cls, title, matchers) and c.get("workspace", {}).get("name") != WS:
+            out.append((c["address"], cls, title))
+    return out
+
+
+def eval_dispatch(code):
+    return hyprctl("eval", f"hl.dispatch({code})").returncode == 0
+
+
+def route(addr):
+    eval_dispatch(
+        f'hl.dsp.window.move({{ window = "address:{addr}", '
+        f'workspace = "name:{WS}", follow = false }})'
+    )
+    eval_dispatch(
+        f'hl.dsp.window.fullscreen({{ window = "address:{addr}", action = "set" }})'
+    )
+
+
+def pid_alive():
+    try:
+        with open(PIDFILE) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return pid
+    except (OSError, ValueError):
+        return None
+
+
+def cmd_watch():
+    discover_sig()
+    with open(PIDFILE, "w") as f:
+        f.write(str(os.getpid()))
+
+    def clean_exit(_sig, _frm):
+        try:
+            os.unlink(PIDFILE)
+        except OSError:
+            pass
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, clean_exit)
+    routed = set()
+    fails = 0
+    while True:
+        if not sunshine_alive():
+            clean_exit(0, None)
+        try:
+            for addr, cls, title in pending_windows():
+                if addr in routed:
+                    continue
+                print(f"couch-route: routing {cls} [{title[:40]}] -> {WS}",
+                      flush=True)
+                route(addr)
+                routed.add(addr)
+            fails = 0
+        except Exception as exc:  # transient hyprctl/json failures
+            fails += 1
+            if fails > 30:  # ~30s of consecutive failures: Hyprland is gone
+                print(f"couch-route: giving up: {exc}", flush=True)
+                clean_exit(0, None)
+        time.sleep(POLL_SECS)
+
+
+def cmd_start():
+    if pid_alive():
+        return
+    subprocess.Popen(
+        [sys.executable, os.path.realpath(__file__), "watch"],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def cmd_stop():
+    pid = pid_alive()
+    if pid is None:
+        return
+    os.kill(pid, signal.SIGTERM)
+    for _ in range(20):
+        if pid_alive() is None:
+            break
+        time.sleep(0.1)
+
+
+def cmd_status():
+    pid = pid_alive()
+    print(f"watcher: {'running (pid ' + str(pid) + ')' if pid else 'not running'}")
+    discover_sig()
+    for addr, cls, title in pending_windows():
+        print(f"pending route: {cls} [{title[:40]}]")
+    return 0
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "start":
+        cmd_start()
+    elif cmd == "stop":
+        cmd_stop()
+    elif cmd == "status":
+        sys.exit(cmd_status())
+    elif cmd == "watch":
+        cmd_watch()
+    else:
+        print(f"usage: {os.path.basename(sys.argv[0])} start|stop|status",
+              file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

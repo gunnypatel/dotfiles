@@ -219,6 +219,10 @@ local gamingWindows = {
     { class = "^steam$" },                            -- storefront
     { class = "^steam_app_[0-9]+$" },                 -- shortcut launchers (Battle.net)
     { class = "^steam_app_[0-9]+$", title = "^World of Warcraft", master = true },
+    -- SC2's D3D9 device crashes on any WM resize: float it at a fixed 16:9
+    -- max (logical px) so layout churn and Battle.net closing can't touch it.
+    { class = "^steam_app_[0-9]+$", title = "^StarCraft", master = true,
+      float = true, size = { 3025, 1701 }, center = true },
 }
 
 -- "name:" is required: a bare name only matches an existing workspace and
@@ -244,26 +248,24 @@ for i, entry in ipairs(gamingWindows) do
         -- same-effect rules: last match wins, so a game's non-silent
         -- workspace (listed after the launcher catch-all) takes precedence
         workspace = entry.master and gamingWs or (gamingWs .. " silent"),
+        float  = entry.float,
+        size   = entry.size,
+        center = entry.center,
     })
 end
 
 {{- if eq $profile "personal" }}
 
 -- Couch workspace: lives on the dongle output; Sunshine streams it to
--- the Shield. Hosts more than emulation (e.g. streamed Steam Big
--- Picture), hence the name. Same pattern as gamingWs above: apps arrive
--- silently, so desktop focus never moves.
--- Classes verified via `hyprctl clients`. match.class is FULLMATCH, not
--- substring search (verified live: a bare `pcsx2` alternative does NOT
--- catch `pcsx2-qt`) — enumerate each packaging's concrete class.
+-- the Shield. Used ONLY while streaming — app windows are routed there
+-- at runtime by the `couch-route` watcher (~/.local/bin/couch-route,
+-- started/stopped by Sunshine prep-cmds; its ROUTES table is the single
+-- registry of streamed-app classes). Deliberately NO static window
+-- rules send anything to couch: runtime rules added via `hyprctl eval`
+-- LOSE to config rules (verified live 2026-10-11), and always-couch
+-- statics contradict the streaming-only semantics. Local launches land
+-- on the current workspace; local couch play = SUPER+SHIFT+E toggle.
 local couchWs = "couch"
-
-local emulationWindows = {
-    { class = "^es-de$" },
-    { class = "^(com\\.libretro\\.RetroArch|retroarch)$" },
-    { class = "^(org\\.DolphinEmu\\.dolphin-emu|dolphin-emu)$" },
-    { class = "^(org\\.pcsx2\\.PCSX2|pcsx2|pcsx2-qt)$" },
-}
 
 -- default = true makes "couch" the dongle output's own workspace, so
 -- nothing ever spawns a stray numbered workspace there.
@@ -295,14 +297,6 @@ hl.on("monitor.added", function()
         end
     end
 end)
-
-for i, entry in ipairs(emulationWindows) do
-    hl.window_rule({
-        name  = "emulation-ws-" .. i,
-        match = { class = entry.class, title = entry.title },
-        workspace = couchWs .. " silent",
-    })
-end
 
 -- Local couch play on the 57": toggle the couch workspace between the
 -- dongle and the Samsung (Sunshine keeps capturing the dongle either
