@@ -171,7 +171,10 @@ hyprctl -j clients | python3 -c 'import json,sys; [print(c["class"], c["workspac
 
 (Routing needs the watcher — with no Sunshine stream active, start it
 manually as shown; `couch-route stop` when done.) Expect an `es-de` row
-on workspace `couch`, desktop focus unmoved. Classes verified this way
+on workspace `couch`. Since 2026-10-11 the watcher also focuses the
+session's first streamed window (BPM drops controller input when
+unfocused); with no stream active this moves keyboard focus to the
+launched window — desktop focus otherwise stays put. Classes verified this way
 for es-de, RetroArch (AppImage), Dolphin (Flatpak) and PCSX2 (AppImage).
 NOTE: the ROUTES regexes in `couch-route` are fullmatch — enumerate
 concrete per-packaging classes (a bare `pcsx2` alternative does NOT
@@ -325,7 +328,9 @@ Each step must pass before the next:
    (idle timeout or manual), `ls /mnt/nimbus/roms` re-mounts on access;
    reboot once with Nimbus powered off → boot completes normally.
 2. **Routing** — `es-session start`; `hyprctl -j clients` shows es-de
-   on workspace `couch`; desktop focus never moved.
+   on workspace `couch`; the watcher focuses the first streamed window
+   (desktop keeps focus for any window that follows while a desktop
+   window is focused).
 3. **Script** — `start` twice → one PID; `status` accurate; `stop`
    clears everything.
 4. **Stream** — Shield Moonlight → "Emulation": set the host's streaming
@@ -402,7 +407,9 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | Emulator window shows on the desktop, not in the stream | `couch-route status` (watcher must be `running`); `hyprctl -j clients` — compare the class against the ROUTES table | `couch-route start` if the watcher died; correct/add the class in `dot_local/bin/executable_couch-route` ROUTES and `chezmoi apply`. No stream active = no couch routing (by design — local launches stay local) |
 | Steam BPM or a game stays on gaming during a stream | `couch-route status` — watcher must be `running`; `pgrep -x sunshine` | Watcher or Sunshine died without undo: `couch-route start`. New/shortcut app class not matched: add it to ROUTES. (History: the pre-2026-10-11 runtime-rule prep never worked — eval-added rules lose to config rules; the watcher replaced it) |
 | wx/GTK app shows black overlay panels (e.g. OrcaSlicer print-time/filament info boxes) | `hyprctl monitors` — a mixed-scale session (any output whose scale differs from the others) triggers it; upstream OrcaSlicer #12330 | Keep all outputs at one scale — the dongle runs 1.25 to match the 57". No per-app GDK env fix exists (`GDK_SCALE` is integer-only/X11-only, `GDK_DPI_SCALE` is fonts-only/X11-only) |
-| No controller input in the stream | Moonlight's per-host settings on the Shield | Input must be enabled for this host in Moonlight settings; verify the combos work locally over USB first to isolate host vs client |
+| No controller input in Steam BPM but ES-DE responds | `hyprctl -j activewindow` — BPM/Steam Input ignore gamepads unless the streamed window holds keyboard focus; `couch-route status` | The watcher focuses streamed windows since 2026-10-11 (session's first window unconditionally, later ones only when focus is free/on couch). If it recurs: watcher dead → `couch-route start`; manual focus: `hyprctl eval 'hl.dispatch(hl.dsp.focus({ window = "address:<WINDOW-ADDR>" }))'` |
+| No controller input in a Steam game (BPM fine, game dead) | Game's Player.log (compatdata `<appid>/pfx/.../LocalLow/...`) shows no joystick after launch; `/dev/input/event*` mtimes vs game start — Steam Input's virtual Xbox pad gets recreated mid-session (churn visible in Steam `controller.txt`); verify chain live: capture events on the Sunshine pad + Steam pad nodes while pressing buttons | Known failure mode (verified 2026-10-11, PEAK): Unity/Proton binds pads at launch and never re-enumerates — when the pad identity churns mid-game (Moonlight re-announce, Steam re-activation), the game holds a dead handle. Workaround: relaunch the game. Sunshine-side injection and Steam Input forwarding can both be healthy — check before blaming either |
+| No controller input anywhere (BPM and ES-DE) | Moonlight per-host input setting on the Shield; then `/proc/bus/input/devices` — a `Wireless Controller` node (Sunshine's uhid DualSense via hid-playstation) must exist while a stream is live | Client input must be enabled for this host in Moonlight. `Warning: ControllerNumber already allocated` in sunshine.log is benign dedup. The gamepad device is destroyed at session end and recreated at the next controller announce with recycled node names — long-lived apps can hold stale bindings (dual-announce at connect still under investigation; workaround: turn the pad on after the stream connects) |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
 | First ROM browse after idle is slow | Expected behavior | Automount penalty: `TimeoutIdleSec=600` unmounts when idle; the next access pays a seconds-long remount |
 

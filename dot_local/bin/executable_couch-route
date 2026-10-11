@@ -20,9 +20,14 @@ Hence: a poller.
   status   watcher state + windows pending a route
   watch    internal: the background loop
 
-Each matching mapped window not on couch is moved there silently once
-and fullscreen-set once; the watcher never fights the user afterwards.
-Exits when Sunshine dies. See docs/gaming/couch-emulation-streaming.md.
+Each matching mapped window not on couch is moved there once and
+fullscreen-set once. Focus policy (added 2026-10-11: Steam BPM drops
+all controller input unless its window holds keyboard focus — the
+"dead controller in the stream" bug): the first streamed window of a
+session is focused unconditionally; later routed windows take focus
+only when nothing is focused or focus is already on couch, so mid-
+session launches never fight the user on the desktop. Exits when
+Sunshine dies. See docs/gaming/couch-emulation-streaming.md.
 """
 import json
 import os
@@ -104,8 +109,8 @@ def matches(cls, title, matchers):
     return False
 
 
-def pending_windows():
-    """Yield (address, class, title) for streamed-app windows not on couch."""
+def scanned_windows():
+    """(address, class, title, on_couch) for every streamed-app window."""
     res = hyprctl("-j", "clients")
     if res.returncode != 0:
         return []
@@ -116,9 +121,24 @@ def pending_windows():
             continue
         cls = c.get("class") or ""
         title = c.get("title") or ""
-        if matches(cls, title, matchers) and c.get("workspace", {}).get("name") != WS:
-            out.append((c["address"], cls, title))
+        if matches(cls, title, matchers):
+            out.append(
+                (c["address"], cls, title,
+                 c.get("workspace", {}).get("name") == WS)
+            )
     return out
+
+
+def pending_windows():
+    """Yield (address, class, title) for streamed-app windows not on couch."""
+    return [(a, cls, t) for a, cls, t, on_couch in scanned_windows()
+            if not on_couch]
+
+
+def couch_windows():
+    """(address, class, title) for streamed-app windows already on couch."""
+    return [(a, cls, t) for a, cls, t, on_couch in scanned_windows()
+            if on_couch]
 
 
 def eval_dispatch(code):
@@ -133,6 +153,25 @@ def route(addr):
     eval_dispatch(
         f'hl.dsp.window.fullscreen({{ window = "address:{addr}", action = "set" }})'
     )
+
+
+def focus_window(addr):
+    return eval_dispatch(
+        f'hl.dsp.focus({{ window = "address:{addr}" }})'
+    )
+
+
+def focus_free_or_couch():
+    """True when no window holds focus, or the focused one is already on
+    couch — i.e. focusing a streamed window would not fight the user."""
+    res = hyprctl("-j", "activewindow")
+    try:
+        cur = json.loads(res.stdout or "{}")
+    except json.JSONDecodeError:
+        return True
+    if not cur.get("class"):
+        return True
+    return (cur.get("workspace") or {}).get("name") == WS
 
 
 def pid_alive():
@@ -159,18 +198,34 @@ def cmd_watch():
 
     signal.signal(signal.SIGTERM, clean_exit)
     routed = set()
+    focused_first = False
     fails = 0
     while True:
         if not sunshine_alive():
             clean_exit(0, None)
         try:
-            for addr, cls, title in pending_windows():
+            scan = scanned_windows()
+            just_routed = []
+            for addr, cls, title in ((a, c, t) for a, c, t, oc in scan
+                                     if not oc):
                 if addr in routed:
                     continue
                 print(f"couch-route: routing {cls} [{title[:40]}] -> {WS}",
                       flush=True)
                 route(addr)
                 routed.add(addr)
+                just_routed.append(addr)
+            # Focus: the session's first streamed window unconditionally
+            # (BPM/Steam Input ignore gamepads when unfocused); later
+            # windows only when focus is free or already on couch.
+            if just_routed and (not focused_first or focus_free_or_couch()):
+                focus_window(just_routed[-1])
+                focused_first = True
+            elif not focused_first:
+                settled = [(a, c, t) for a, c, t, oc in scan if oc]
+                if settled:
+                    focus_window(settled[0][0])
+                    focused_first = True
             fails = 0
         except Exception as exc:  # transient hyprctl/json failures
             fails += 1
