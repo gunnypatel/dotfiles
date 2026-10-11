@@ -146,7 +146,13 @@ The dongle (description `LLV WOIEYEK 4K120 0x03F92F10`, connector
   scale on both runtimes 50.4/50.5; broken mixed on both). Logical
   resolution is 3072x1728; Sunshine still captures the full
   3840x2160 framebuffer.
-- `couch` workspace bound to the dongle (`persistent` + `default`).
+- `couch` workspace bound to the dongle (`persistent` + `default`) as a
+  single-tile output: `layout = monocle` with zero gaps and no
+  decorations (2026-10-11: a lone BPM window after game exit tiled as a
+  centered master tile — tiling makes no sense on a TV). The noctalia
+  bar is disabled for the dongle (`bar.default.monitor.dongle` in
+  `dot_config/noctalia/config.toml`) — it reserved a 34px strip atop
+  the stream; the 57" keeps its bars.
   Routing is NOT static: couch is used only while streaming, and
   runtime window rules lose to config rules (verified 2026-10-11), so
   the `couch-route` watcher (`dot_local/bin/executable_couch-route`,

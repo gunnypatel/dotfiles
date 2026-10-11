@@ -268,12 +268,22 @@ end
 local couchWs = "couch"
 
 -- default = true makes "couch" the dongle output's own workspace, so
--- nothing ever spawns a stray numbered workspace there.
+-- nothing ever spawns a stray numbered workspace there. Monocle makes
+-- it a single-tile workspace: exactly one streamed window fills the
+-- whole output — tiling artifacts on a TV make no sense (2026-10-11:
+-- BPM reappearing as a centered master tile after a game exit), and
+-- with gaps 0 + decorate off the windowed in-between states (BPM
+-- behind a running game, post-exit) look fullscreen anyway. Fullscreen
+-- itself is still set per-window by the couch-route watcher.
 hl.workspace_rule({
     workspace  = "name:" .. couchWs,
     monitor    = "desc:" .. dongleDesc,
     persistent = true,
     default    = true,
+    layout     = "monocle",
+    gaps_in    = 0,
+    gaps_out   = 0,
+    decorate   = false,
 })
 
 -- The dongle is the exception, not a second desktop: ONLY the couch
