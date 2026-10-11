@@ -27,8 +27,16 @@
             ],
             "prep-cmd": [
                 {
-                    "do": "hyprctl eval 'hl.window_rule({ name = \"couch-steam-stream\", match = { class = \"^(steam|steam_app_[0-9]+)$\" }, workspace = \"couch silent\" })' && hyprctl eval 'hl.dispatch(hl.dsp.window.move({ window = \"class:^(steam|steam_app_[0-9]+)$\", workspace = \"name:couch\", follow = false }))'",
-                    "undo": "setsid flatpak run com.valvesoftware.Steam steam://close/bigpicture && hyprctl reload && hyprctl eval 'hl.dispatch(hl.dsp.window.move({ window = \"class:^(steam|steam_app_[0-9]+)$\", workspace = \"name:gaming\", follow = false }))'"
+                    "do": "hyprctl eval 'hl.window_rule({ name = \"couch-steam-stream\", match = { class = \"^(steam|steam_app_[0-9]+)$\" }, workspace = \"couch silent\" })'",
+                    "undo": "setsid flatpak run com.valvesoftware.Steam steam://close/bigpicture"
+                },
+                {
+                    "do": "hyprctl eval 'hl.dispatch(hl.dsp.window.move({ window = \"class:^(steam|steam_app_[0-9]+)$\", workspace = \"name:couch\", follow = false }))'",
+                    "undo": "hyprctl reload"
+                },
+                {
+                    "do": "",
+                    "undo": "hyprctl eval 'hl.dispatch(hl.dsp.window.move({ window = \"class:^(steam|steam_app_[0-9]+)$\", workspace = \"name:gaming\", follow = false }))'"
                 }
             ],
             "image-path": "steam.png"
