@@ -27,7 +27,7 @@
             ],
             "prep-cmd": [
                 {
-                    "do": "hyprctl eval 'hl.window_rule({ name = \"couch-steam-stream\", match = { class = \"^(steam|steam_app_[0-9]+)$\" }, workspace = \"couch silent\" })'",
+                    "do": "hyprctl eval 'hl.window_rule({ name = \"couch-steam-stream\", match = { class = \"^(steam|steam_app_[0-9]+)$\" }, workspace = \"couch silent\", fullscreen = true })'",
                     "undo": "setsid flatpak run com.valvesoftware.Steam steam://close/bigpicture"
                 },
                 {
