@@ -40,9 +40,12 @@ Daily flow: pick **Emulation** in Moonlight → Sunshine starts the
 `couch-route` watcher and runs `es-session start` → ES-DE launches
 (or is reused) and the watcher routes it to the couch workspace →
 play. Select(hold)+Start exits an emulator back to the ES-DE
-grid; L3+R3 opens the RetroArch menu. Dropping the stream changes
-nothing on the host (ES-DE persists between streams); **Emulation
-(Stop)** tears the session down on demand.
+grid; L3+R3 opens the RetroArch menu. Since 2026-10-11 any session
+end — quitting from Moonlight or a disconnect — runs the undo chain
+(`es-session stop`, then watcher stop) and tears the session down;
+Sunshine's undo cannot distinguish a quit from a drop, so a network
+hiccup mid-game also ends the session. **Emulation (Stop)** remains
+as an explicit manual stop.
 
 ## One-time setup
 
@@ -107,13 +110,26 @@ findmnt /mnt/nimbus/roms                     # expect: a cifs entry
 
 As installed on this machine:
 
-- **RetroArch** — AppImage at `~/AppImages/retroarch.appimage` (window
-  class `com.libretro.RetroArch`; process comm truncates to
-  `retroarch.appim`). Cores install from inside the app: **Main Menu →
-  Online Updater → Core Downloader** (recommended set: Gambatte, mGBA,
-  Nestopia UE, Snes9x, Genesis Plus GX, Mupen64Plus-Next). The dnf
-  `retroarch` package also exists at `/usr/bin/retroarch` but ships no
-  core downloader — the AppImage is the canonical install.
+- **RetroArch** — **use the Flathub flatpak (`org.libretro.RetroArch`,
+  `--user` install) for best compatibility.** 2026-10-11 finding: the
+  libretro `.7z`/AppImage distribution bundles an old SDL with
+  incomplete DualSense mappings (Start dead, L3+R3 menu dead) and its
+  input layer misbehaves when launched by ES-DE; the flatpak's modern
+  SDL maps Sunshine's emulated DualSense completely. ES-DE resolves
+  RetroArch to the wrapper `~/.local/bin/retroarch-es`
+  (`~/ES-DE/custom_systems/es_find_rules.xml`), which launches the
+  flatpak with `-c ~/.config/retroarch/retroarch.cfg`; the sandbox gets
+  read-only `~/.config/retroarch` (config + cores) and
+  `/mnt/nimbus/roms` via `flatpak override --user`. Window class
+  `com.libretro.RetroArch` (unchanged); process comm is now plain
+  `retroarch` (still covered by es-session's EMULATORS). Cores install
+  from inside the app: **Main Menu → Online Updater → Core
+  Downloader** (recommended set: Gambatte, mGBA, Nestopia UE, Snes9x,
+  Genesis Plus GX, Mupen64Plus-Next); the shared
+  `~/.config/retroarch/cores` keeps working through the override. The
+  dnf `retroarch` package ships no core downloader; the old
+  `~/AppImages/retroarch.appimage` is retired (kept only as a
+  find-rules fallback entry).
 - **Dolphin** — Flatpak `org.DolphinEmu.dolphin-emu` (class is plain
   `dolphin-emu`), granted read-only ROM access (already applied; takes
   effect on next app launch):
@@ -263,17 +279,21 @@ NOT chezmoi-managed.
 
 #### 4.4 RetroArch runtime verification
 
-RetroArch runs as the AppImage (`~/AppImages/retroarch.appimage`). It
-is currently WINDOWED at 3072x1728 for local testing — once streaming
-is verified, flip `video_fullscreen = "true"` (and drop the window
-geometry) in `dot_config/retroarch/retroarch.cfg` (a note in the file
-marks the spot).
+RetroArch runs as the Flathub flatpak via the `retroarch-es` wrapper
+(setup 3), fullscreen (`video_fullscreen = "true"` since 2026-10-11).
+The config MUST keep `input_driver = "sdl2"` and
+`input_joypad_driver = "sdl2"`: in the ES-DE/Sunshine launch
+environment RA otherwise auto-picks input driver "x" + joypad "udev",
+which binds Sunshine's emulated DualSense but leaves every button
+unmapped — pad dead in-game while ES-DE chimes along behind it
+(verified 2026-10-11 via `~/retroarch.log`: `Found input driver: "x"`,
+`[Autoconf] Wireless Controller (1356/3302) not configured`).
 
 First launch must use the Wayland context, not SDL — Vulkan ICD issues
 on the dongle GPU would surface here:
 
 ```bash
-~/AppImages/retroarch.appimage --verbose --menu & sleep 4; pkill -x retroarch.appim
+flatpak run org.libretro.RetroArch --menu & sleep 4; pkill -x retroarch
 ```
 
 Check the context driver in the verbose output (wayland expected). Then
@@ -357,11 +377,45 @@ Each step must pass before the next:
    from the Shield grid, "Steam (Couch)" opens Big Picture in the
    stream and a game launched from it stays in the stream; after the
    session, a locally-launched Steam window lands on gaming again.
-7. **Persistence** — drop the stream (Shield home), reconnect
-   "Emulation": ES-DE state identical, no host-side cleanup ran.
+7. **Teardown on session end** — quit the stream from Moonlight (Back →
+   quit): emulators + ES-DE exit (`es-session status` shows not running)
+   and the watcher stops; reconnecting "Emulation" starts a fresh
+   session. (Changed 2026-10-11: the original as-built kept ES-DE
+   persistent across session ends; teardown-on-quit was requested
+   later and applies to drops too — verify both paths.)
 8. **Teardown** — run "Emulation (Stop)" from Moonlight: emulator +
    ES-DE processes gone (`es-session status` shows not running), host
    desktop untouched throughout.
+
+### 6. Moonlight / Shield client settings (2026-10-11)
+
+Per-host (Moonlight → gear next to the host):
+
+- **Resolution 3840x2160 @ 60 FPS, codec HEVC, bitrate ~100 Mbps**
+  (wired Ethernet; host processing rises to ~7.5 ms avg at 4K vs ~2 ms
+  at 1080p — that is 4× the encode pixels, normal, budget is 16.7 ms).
+  No host downscaling at this setting: capture (dongle) and stream are
+  both 4K, so the scaler is a pass-through; the overlay's
+  "Video stream: 3840x2160" line confirms what is actually sent.
+- **Frame pacing: Prefer lowest latency** (global Moonlight setting).
+
+Shield / TV:
+
+- **Video Upscaling mode: Basic or Enhanced.** AI-Enhanced queues
+  ~10 frames (~163 ms decode in the overlay) — but only when it
+  actually engages, i.e. sub-4K streams; at a native 4K stream there
+  is nothing to upscale and the mode is bypassed (safe to leave on for
+  media apps if you never stream below 4K). The GeForce NOW "apply
+  upscaling while streaming" toggle does NOT govern Moonlight — the
+  global mode does.
+- Shield Display & Sound: HDMI output 4K60.
+- TV: **Game mode on the Shield's HDMI input** (removes TV processing;
+  fixed stutter and part of the latency, 2026-10-11).
+
+Monitoring: enable the stats overlay in Moonlight settings. Healthy
+reference at 4K60 HEVC — network ~1 ms, host processing ~2–8 ms,
+decode ~0, drops 0%. Low FPS (~10) on the ES-DE grid is Sunshine's
+variable-frame-rate encoding on static content, not a fault.
 
 ## Daily operation
 
@@ -369,12 +423,11 @@ Everything referenced here is configured in "One-time setup" above.
 
 From the couch (Shield):
 
-- **Moonlight → this host → "Emulation"** — starts or resumes the
-  ES-DE session. Reconnecting after dropping the stream resumes exactly
-  where you left off.
-- **Moonlight → "Emulation (Stop)"** — terminates any running emulators,
-  then ES-DE. Leaving the session running is also fine (persistent by
-  design).
+- **Moonlight → this host → "Emulation"** — starts the ES-DE session
+   (fresh unless one is still up from a manual host-side start).
+- **Moonlight → "Emulation (Stop)"** — belt-and-braces manual stop;
+   since 2026-10-11 the session already tears itself down on any
+   stream end (quit or disconnect — undos cannot tell them apart).
 - **Moonlight → "Steam (Couch)"** — opens Big Picture routed to the
    couch output; any game launched from it stays there for the duration
    of the stream (the `couch-route` watcher enforces this — expect up
@@ -408,6 +461,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 |---|---|---|
 | Stream fails / black screen | `es-session status` (dongle row); `~/.config/sunshine/sunshine.log` | Dongle must be present; `output_name` in `~/.config/sunshine/sunshine.conf` must be the BARE connector name (`HDMI-A-1`, no `card1-` prefix) on Sunshine ≥ 2026.906 — a `Couldn't find monitor [<huge number>]` loop means the value isn't a valid name/index; check `getcap` on the sunshine binary; restart `app-dev.lizardbyte.app.Sunshine.service` |
 | Stream works but CPU-bound / software encode in log (`Found H.264 encoder: libx264 [software]`) | `vainfo --display drm --device /dev/dri/renderD128 \| grep -E "H264\|HEVC"` | Both codecs must show `VAEntrypointEncSlice`; if missing, install `mesa-va-drivers-freeworld` (RPM Fusion) and restart Sunshine |
+| Input lag in streamed games (~0.25–0.35 s); Moonlight overlay shows decode time ~165 ms while network/encode are clean (1–2 ms, 0% drops), same on H.264 and HEVC, audio slightly ahead of video | Moonlight stats overlay (enable in client settings) — the decode row is the tell; game feels fine locally via SUPER+Shift+E | Shield: Settings → Device Preferences → Display & Sound → **Video Upscaling mode → Basic or Enhanced** — **AI-Enhanced queues ~10 frames** post-decode when it engages (sub-4K streams only; at a native 4K stream the upscaler is bypassed and the mode is inert — see setup §6. The separate "GeForce NOW: apply upscaling while streaming" toggle does NOT govern Moonlight; the global mode does). Also enable Game mode on the TV input (kills stutter/TV processing). Verified 2026-10-11: AI-Enhanced decode 163 ms → 0 ms on Basic/Enhanced, lag gone |
 | Stream connects but workspace is empty / ES-DE not running | Sunshine's user-service environment is snapshotted at service start and may lack `WAYLAND_DISPLAY` when enabled for autostart before the Hyprland session imports its env; check `systemctl --user show-environment \| grep WAYLAND_DISPLAY` | `systemctl --user restart app-dev.lizardbyte.app.Sunshine.service` |
 | ES-DE lists no systems | `findmnt /mnt/nimbus/roms`; `systemctl status mnt-nimbus-roms.automount` | Automount must be `active (waiting)`; trigger with `ls /mnt/nimbus/roms`; check Nimbus is powered on and the share still permits guest access (if auth was enabled, see setup step 1) |
 | Emulator window shows on the desktop, not in the stream | `couch-route status` (watcher must be `running`); `hyprctl -j clients` — compare the class against the ROUTES table | `couch-route start` if the watcher died; correct/add the class in `dot_local/bin/executable_couch-route` ROUTES and `chezmoi apply`. No stream active = no couch routing (by design — local launches stay local) |
@@ -417,6 +471,7 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | No controller input in a Steam game (BPM fine, game dead) | Game's Player.log (compatdata `<appid>/pfx/.../LocalLow/...`) shows no joystick after launch; `/dev/input/event*` mtimes vs game start — Steam Input's virtual Xbox pad gets recreated mid-session (churn visible in Steam `controller.txt`); verify chain live: capture events on the Sunshine pad + Steam pad nodes while pressing buttons | Known failure mode (verified 2026-10-11, PEAK): Unity/Proton binds pads at launch and never re-enumerates — when the pad identity churns mid-game (Moonlight re-announce, Steam re-activation), the game holds a dead handle. Workaround: relaunch the game. Sunshine-side injection and Steam Input forwarding can both be healthy — check before blaming either |
 | No controller input anywhere (BPM and ES-DE) | Moonlight per-host input setting on the Shield; then `/proc/bus/input/devices` — a `Wireless Controller` node (Sunshine's uhid DualSense via hid-playstation) must exist while a stream is live | Client input must be enabled for this host in Moonlight. `Warning: ControllerNumber already allocated` in sunshine.log is benign dedup. The gamepad device is destroyed at session end and recreated at the next controller announce with recycled node names — long-lived apps can hold stale bindings (dual-announce at connect still under investigation; workaround: turn the pad on after the stream connects) |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
+| RetroArch game ignores the controller (no input or "Wireless Controller (1356/3302) not configured" toast; ES-DE still beeps behind the game) | Temporarily re-add `log_to_file`/`log_dir`/`log_verbosity_level` keys to retroarch.cfg and read `~/retroarch.log` — look for `Found input driver: "x"` and joypad "udev" | Keep `input_driver = "sdl2"` + `input_joypad_driver = "sdl2"` in `dot_config/retroarch/retroarch.cfg` (the ES-DE/Sunshine env makes RA auto-pick x/udev, which binds the pad but maps no buttons) and launch via the `retroarch-es` wrapper with the Flathub build — the `.7z`/AppImage SDL also lacks full DualSense mappings (verified 2026-10-11) |
 | First ROM browse after idle is slow | Expected behavior | Automount penalty: `TimeoutIdleSec=600` unmounts when idle; the next access pays a seconds-long remount |
 
 ## Maintenance
@@ -481,8 +536,11 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | `dot_config/hypr/hyprland.lua.tmpl` → `~/.config/hypr/hyprland.lua` | chezmoi | Dongle monitor + couch workspace binding (no routing rules), `personal`-gated |
 | `dot_local/bin/executable_couch-route` → `~/.local/bin/couch-route` | chezmoi | Stream-scoped couch routing; ROUTES = registry of streamed-app classes |
 | `dot_local/bin/executable_es-session` → `~/.local/bin/es-session` | chezmoi | `EMULATORS` must match installed binary names |
-| `dot_config/sunshine/apps.json` → `~/.config/sunshine/apps.json` | chezmoi | App grid; Steam (Couch) + Emulation preps start/stop couch-route |
-| `dot_config/retroarch/retroarch.cfg` → `~/.config/retroarch/retroarch.cfg` | chezmoi | Runtime saves disabled; see recovery in Maintenance |
+| `dot_config/sunshine/apps.json` → `~/.config/sunshine/apps.json` | chezmoi | App grid; Steam (Couch) + Emulation preps start/stop couch-route; Emulation undo stops es-session (session teardown on stream end) |
+| `dot_config/retroarch/retroarch.cfg` → `~/.config/retroarch/retroarch.cfg` | chezmoi | Runtime saves disabled; MUST force `input_driver`/`input_joypad_driver` = sdl2 (setup 4.4); shared read-only into the flatpak via the wrapper's `-c`; see recovery in Maintenance |
+| `dot_local/bin/executable_retroarch-es` → `~/.local/bin/retroarch-es` | chezmoi | ES-DE → Flathub RetroArch launcher (`-c` shared config) |
+| `ES-DE/custom_systems/es_find_rules.xml` → `~/ES-DE/custom_systems/es_find_rules.xml` | chezmo | RetroArch find-rule override resolving `%EMULATOR_RETROARCH%` to the wrapper (runtime copy is ES-DE-read-only, deployed by hand) |
+| Flathub `org.libretro.RetroArch` (`--user`) + `flatpak override --user --filesystem=~/.config/retroarch:ro --filesystem=/mnt/nimbus/roms:ro` | Hand (flatpak) | Canonical RetroArch install (setup 3) |
 | `run_once_install-nimbus-roms-mount.sh.tmpl` | chezmoi (`run_once`) | Installs the systemd units below; see the re-run trap in setup step 2 |
 | `~/.config/chezmoi/chezmoi.toml` | Hand (never committed) | `[data.machine] profile`, `[data.nimbus] romsShare` |
 | `~/.config/sunshine/sunshine.conf` | Hand | Two keys: `capture = kms`, `output_name` = bare connector name (`HDMI-A-1`) |
@@ -490,8 +548,8 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | `/etc/cifs-creds-nimbus` | Hand — only if auth is ever enabled | Mode 600; not needed while the share is public/guest |
 | `/etc/systemd/system/mnt-nimbus-roms.{mount,automount}` | Generated by the `run_once` installer | Idempotent — rewritten only on content change |
 | `~/AppImages/es-de.AppImage` | Hand / GearLever | ES-DE 3.5.0 |
-| `~/AppImages/retroarch.appimage` | Hand | Cores via in-app Core Downloader (setup 3) |
-| `~/ES-DE/**` (`es_settings.xml`, logs, scraped media) | ES-DE runtime | Logs at `~/ES-DE/logs/es_log.txt` |
+| `~/AppImages/retroarch.appimage` | Hand | RETIRED 2026-10-11 (old SDL, incomplete DualSense mappings) — kept only as a find-rules fallback |
+| `~/ES-DE/**` (`es_settings.xml`, logs, scraped media) | ES-DE runtime | Logs at `~/ES-DE/logs/es_log.txt`; settings live at `~/ES-DE/settings/es_settings.xml` |
+| `~/.var/app/org.libretro.RetroArch/config/retroarch/{saves,states,playlists,thumbnails,autoconfig}` | RetroArch runtime (flatpak sandbox) | Saves/states are local on host by design; moved here from `~/.config/retroarch/` with the flatpak switch |
 | `~/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/*.ini`, `~/.config/PCSX2/**` | Emulator runtime | Flatpak / AppImage paths; hotkeys set via each UI (setup 4.5) |
 | `~/.config/sunshine/{sunshine_state.json,sunshine.log,credentials}` | Sunshine runtime | Ignored via `.chezmoiignore.tmpl` |
-| `~/.config/retroarch/{saves,states,playlists,thumbnails,autoconfig}` | RetroArch runtime | Saves/states are local on host by design |

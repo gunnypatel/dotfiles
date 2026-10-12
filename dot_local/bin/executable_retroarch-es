@@ -1,0 +1,14 @@
+#!/bin/sh
+# ES-DE → RetroArch launcher (Flathub flatpak, 2026-10-11).
+# Why: the libretro .7z AppImage bundles an old SDL whose DualSense
+# mapping is incomplete (Start/L3+R3 dead) even with the forced sdl2
+# drivers; the Flathub build's modern SDL maps Sunshine's emulated
+# DualSense (1356/3302) completely. Config is shared read-only via -c
+# and MUST force input_driver/input_joypad_driver = "sdl2" — the
+# ES-DE/Sunshine env otherwise makes RA auto-pick input "x" + joypad
+# "udev", which leaves the pad bound but unmapped.
+# Sandbox access: flatpak override --user --filesystem=~/.config/retroarch:ro \
+#   --filesystem=/mnt/nimbus/roms:ro org.libretro.RetroArch
+# Registered in ~/ES-DE/custom_systems/es_find_rules.xml.
+# See docs/gaming/couch-emulation-streaming.md.
+exec flatpak run org.libretro.RetroArch -c "$HOME/.config/retroarch/retroarch.cfg" "$@"
