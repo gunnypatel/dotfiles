@@ -132,10 +132,13 @@ As installed on this machine:
   find-rules fallback entry).
 - **Dolphin** — Flatpak `org.DolphinEmu.dolphin-emu` (class is plain
   `dolphin-emu`), granted read-only ROM access (already applied; takes
-  effect on next app launch):
+  effect on next app launch), plus the Discord-IPC exemption (without
+  it bwrap hard-fails with `Can't bind mount ... discord-ipc-0`
+  whenever Discord isn't running — verified 2026-10-11):
 
   ```bash
   flatpak override --user --filesystem=/mnt/nimbus/roms:ro org.DolphinEmu.dolphin-emu
+  flatpak override --user --nofilesystem=xdg-run/discord-ipc-0 org.DolphinEmu.dolphin-emu
   ```
 
 - **PCSX2** — AppImage at `~/AppImages/pcsx2.appimage` (window class
@@ -346,6 +349,27 @@ are mapped through each UI once:
   empty). Window placement is verified via the `hyprctl -j clients`
   one-liner above, plus a visual check through a Moonlight test stream.
 
+Wii via standalone Dolphin — three verified gotchas (2026-10-11):
+
+- ES-DE's `AlternativeEmulatorPerGame` must be **false** in
+  `~/ES-DE/settings/es_settings.xml`, otherwise the system-level pick
+  (`<string name="AlternativeEmulator-wii" value="Dolphin (Standalone)" />`)
+  is silently ignored and games launch through the legacy RetroArch
+  dolphin core instead.
+- The Dolphin flatpak blinks back to ES when Discord isn't running
+  (bwrap `discord-ipc-0` mount failure) — fixed by the
+  `--nofilesystem=xdg-run/discord-ipc-0` override (setup 3).
+- The Wii library arrived as zipped ISOs. Dolphin cannot open
+  archives — extract to `.iso` on the ROM share (mounted rw) or
+  convert to RVZ. SNES zips are fine (snes9x reads archives natively);
+  check other disc-based systems (GameCube, PS2) for the same trap.
+- Dolphin ships with Wii Remote 1 and all GameCube ports bound to
+  `XInput2/0/Virtual core pointer` (the mouse) — game input must be
+  bound in **Controllers → Wii Remote 1 / GC Port 1 → Configure →
+  Device `SDL/0/Wireless Controller`** with the stream up (the pad
+  must exist to appear in the device list). Setup §4.5 only bound the
+  exit hotkey; the gamepad mappings were never configured.
+
 ### 5. End-to-end verification (needs Shield + controller)
 
 Each step must pass before the next:
@@ -472,6 +496,9 @@ inner AppImage binary; the `es-de.AppImage` launcher self-exits), so
 | No controller input anywhere (BPM and ES-DE) | Moonlight per-host input setting on the Shield; then `/proc/bus/input/devices` — a `Wireless Controller` node (Sunshine's uhid DualSense via hid-playstation) must exist while a stream is live | Client input must be enabled for this host in Moonlight. `Warning: ControllerNumber already allocated` in sunshine.log is benign dedup. The gamepad device is destroyed at session end and recreated at the next controller announce with recycled node names — long-lived apps can hold stale bindings (dual-announce at connect still under investigation; workaround: turn the pad on after the stream connects) |
 | `es-session start` exits 4 | `ls ~/AppImages/es-de.AppImage` | Restore the AppImage (see ES-DE updates in Maintenance) |
 | RetroArch game ignores the controller (no input or "Wireless Controller (1356/3302) not configured" toast; ES-DE still beeps behind the game) | Temporarily re-add `log_to_file`/`log_dir`/`log_verbosity_level` keys to retroarch.cfg and read `~/retroarch.log` — look for `Found input driver: "x"` and joypad "udev" | Keep `input_driver = "sdl2"` + `input_joypad_driver = "sdl2"` in `dot_config/retroarch/retroarch.cfg` (the ES-DE/Sunshine env makes RA auto-pick x/udev, which binds the pad but maps no buttons) and launch via the `retroarch-es` wrapper with the Flathub build — the `.7z`/AppImage SDL also lacks full DualSense mappings (verified 2026-10-11) |
+| Wii game blinks back to ES (Dolphin "Could not recognize file" or the dolphin core exits instantly) | `unzip -l` the ROM — a `.zip` containing an `.iso`? | Dolphin cannot open archives: extract to `.iso` on the share (rw) or convert to RVZ; archive support is per-emulator (snes9x yes, Dolphin no) — verified 2026-10-11 |
+| Dolphin launches then dies instantly (blank, back to ES) | Run the flatpak binary by hand with stderr captured: `bwrap: Can't bind mount ... discord-ipc-0` | `flatpak override --user --nofilesystem=xdg-run/discord-ipc-0 org.DolphinEmu.dolphin-emu` — the manifest exposes Discord's IPC socket and hard-fails when Discord is closed (verified 2026-10-11) |
+| Alternative-emulator pick ignored (games still launch the old emulator) | `grep AlternativeEmulator ~/ES-DE/settings/es_settings.xml` | `AlternativeEmulatorPerGame=true` disables system-level picks — set it false; the system entry (e.g. `AlternativeEmulator-wii`) then applies (verified 2026-10-11) |
 | First ROM browse after idle is slow | Expected behavior | Automount penalty: `TimeoutIdleSec=600` unmounts when idle; the next access pays a seconds-long remount |
 
 ## Maintenance
