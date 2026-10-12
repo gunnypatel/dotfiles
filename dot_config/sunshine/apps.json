@@ -50,6 +50,10 @@
                 {
                     "do": "couch-route start",
                     "undo": "couch-route stop"
+                },
+                {
+                    "do": "",
+                    "undo": "setsid -f es-session stop"
                 }
             ]
         },
